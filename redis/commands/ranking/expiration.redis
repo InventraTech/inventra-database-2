@@ -1,0 +1,14 @@
+# Ranking de validade por cozinha (INV2-26).
+# Arquivo de leitura: substitua os placeholders antes de executar manualmente.
+# A API executa a publicação inteira pelo script Lua
+# redis/scripts/ranking/replace.lua.
+
+# Publicar um snapshot. KEYS[1] é a chave visível e KEYS[2] é uma chave
+# temporária exclusiva. ARGV: TTL, marcador vazio e pares membro/score.
+EVAL "<conteudo de replace.lua>" 2 inventra:ranking:expiration:{kitchenId} inventra:ranking:expiration:{kitchenId}:build:{uuid} 60 ~empty 0000000008 20000
+
+# Consultar os primeiros itens (menor score = validade mais próxima).
+ZRANGE inventra:ranking:expiration:{kitchenId} 0 9 WITHSCORES
+
+# Conferir o TTL do snapshot publicado.
+TTL inventra:ranking:expiration:{kitchenId}

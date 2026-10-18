@@ -15,3 +15,5 @@ jobs:
       - run: bash redis/tests/check_keyspace_sync.sh
       # o redis.conf sobe num redis:7 e cada diretiva é aplicada
       - run: bash redis/tests/check_config.sh
+      # scripts da fila e do ranking executam num redis:7 real
+      - run: bash redis/tests/check_scripts.sh

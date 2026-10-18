@@ -8,7 +8,7 @@ Catálogo das chaves que a API Spring ([`inventra-development-spring-redis-neo4j
 | **Variáveis** | `REDIS_HOST`, `REDIS_PORT`, `REDIS_USERNAME`, `REDIS_PASSWORD`, `REDIS_DATABASE` (padrão `0`), `REDIS_SSL` |
 | **Cliente** | `StringRedisTemplate` (valores sempre string; JSON serializado pela API) |
 | **Timeouts** | conexão e comando: 10 s |
-| **Usos** | refresh tokens, pedidos de acesso à cozinha, fila de cadastro por código de barras |
+| **Usos** | refresh tokens, pedidos de acesso à cozinha, fila de cadastro por código de barras e ranking de validade por cozinha |
 
 ## Visão geral
 
@@ -27,6 +27,8 @@ Catálogo das chaves que a API Spring ([`inventra-development-spring-redis-neo4j
 | `inventra:product-registration:sequence` | String (contador) | sem TTL | `RedisProductRegistrationQueue` |
 | `inventra:product-registration:consumer-lock` | String | 30 s, renovado a cada 5 s | `ProductRegistrationConsumer` |
 | `inventra:product-registration:errors` | List (DLQ) | 7 dias sem novas falhas (lista inteira) | `RedisProductRegistrationQueue` |
+| `inventra:ranking:expiration:{kitchenId}` | Sorted Set | 60 s, renovado a cada reconstrução | `RedisExpirationRanking` |
+| `inventra:ranking:expiration:{kitchenId}:build:{uuid}` | Sorted Set temporário | 60 s; renomeado atomicamente ao publicar | `RedisExpirationRanking` |
 
 `userId` e `decidedBy` são o `tb_user.id_user` (UUID) e `kitchenId` é o `tb_kitchen.id_kitchen` do PostgreSQL. O Redis não tem chave estrangeira: um usuário ou cozinha removido no PostgreSQL deixa chaves órfãs até o TTL ou a limpeza na leitura.
 
@@ -63,7 +65,7 @@ Um usuário pede para entrar numa cozinha; o supervisor aprova ou recusa. O pedi
 
 ## Fila de cadastro por código de barras (`inventra:product-registration:*`)
 
-Fila FIFO confiável da INV2-25 (Redis List com `LPUSH`/`BRPOP`). O fluxo completo, garantias e evidências estão em `docs/redis-product-queue.md` da API; aqui fica o contrato das chaves. O prefixo vem de `REDIS_PRODUCT_QUEUE_KEY_PREFIX`: ambientes que compartilham o mesmo Redis precisam de prefixos diferentes, e os testes usam `inventra:test:...`.
+Fila FIFO confiável da INV2-25 (Redis List com `LPUSH`/`BRPOP`). O fluxo completo e as garantias estão em [`PRODUCT_QUEUE.md`](PRODUCT_QUEUE.md). O prefixo vem de `REDIS_PRODUCT_QUEUE_KEY_PREFIX`: ambientes que compartilham o mesmo Redis precisam de prefixos diferentes, e os testes usam `inventra:test:...`.
 
 | Sufixo | Conteúdo |
 |--------|----------|
@@ -76,6 +78,21 @@ Fila FIFO confiável da INV2-25 (Redis List com `LPUSH`/`BRPOP`). O fluxo comple
 | `errors` | DLQ: JSON do job falho ou `{eventId, status, errorCode, originalPayload}` (até 4 KiB) da quarentena; máx. 1.000 itens |
 
 O vínculo com o PostgreSQL é a coluna `tb_product.registration_event_id` (UUID único), gravada na mesma transação do produto: é ela que permite reprocessar o mesmo `eventId` sem duplicar o produto. Essa coluna está hoje só na migration da API (`V010__product_registration_event.sql`), ainda não no `postgre/` deste repositório.
+
+## Ranking de validade (`inventra:ranking:expiration:*`)
+
+Ranking da INV2-26 com um Sorted Set por cozinha. Entram lotes `ACTIVE`, com saldo positivo e data de validade preenchida. O membro é o ID do lote com padding de 10 posições, e o score é a data de validade em epoch day; por isso os lotes que vencem primeiro aparecem nas primeiras posições. Empates são resolvidos pelo ID numérico crescente.
+
+| Chave | Conteúdo |
+|-------|----------|
+| `inventra:ranking:expiration:{kitchenId}` | Snapshot publicado do ranking da cozinha; contém também o marcador interno `~empty` com score `+inf` quando a cozinha não possui lotes elegíveis |
+| `inventra:ranking:expiration:{kitchenId}:build:{uuid}` | Snapshot temporário criado pelo script Lua; recebe os membros e é publicado com `RENAME`, sem expor ranking parcial |
+
+- TTL padrão: 60 segundos, configurável por `REDIS_RANKING_TTL_SECONDS`; o prefixo é configurável por `REDIS_RANKING_KEY_PREFIX`.
+- Entrada, baixa, reposição, ajuste e consumo FEFO publicam a alteração após o commit PostgreSQL. A reconstrução assíncrona substitui o snapshot inteiro de forma atômica.
+- Cache ausente ou expirado é reconstruído a partir do PostgreSQL na próxima consulta. Uma falha do Redis não desfaz uma movimentação já confirmada no banco relacional.
+- Endpoint: `GET /ranking?kitchenId={id}&limit={1..100}`. A autenticação e a autorização por cozinha permanecem iguais às da API.
+- Contrato completo e critérios: [`RANKING.md`](RANKING.md).
 
 ## Comandos por operação
 
@@ -92,8 +109,9 @@ Cada operação da API está em [`commands/`](../commands), como a sequência de
 | `product-queue/consume.redis` | Retirar o próximo ID (`BRPOP`), consultar pedido e DLQ |
 | `product-queue/update.redis` | `PROCESSING`, `COMPLETED` ou `FAILED` (com DLQ) |
 | `product-queue/quarantine.redis` | Payload inválido direto para a DLQ |
+| `ranking/expiration.redis` | Publicar atomicamente e consultar o ranking de validade por cozinha |
 
-**Atomicidade.** Nos arquivos que começam com "se ... para aqui" (`enqueue`, `recover`, `update`, `quarantine`, renovar/liberar em `lease` e `decide`), a API não manda os comandos um a um. Ela executa a sequência inteira de uma vez, num script Lua (`src/main/resources/redis/product-queue/*.lua` e `DECIDE_SCRIPT` em `RedisKitchenAccessRequestStore`). É o que impede um consumer que perdeu a concessão de confirmar um item, ou dois supervisores de decidirem o mesmo pedido. Rodados manualmente, um por um, esses comandos **não** têm essa garantia; para corrigir dado em produção, prefira a API.
+**Atomicidade.** Nos arquivos que começam com "se ... para aqui" (`enqueue`, `recover`, `update`, `quarantine`, renovar/liberar em `lease` e `decide`), a API não manda os comandos um a um. Ela executa a sequência inteira de uma vez. Os scripts versionados estão em [`scripts/product-queue/`](../scripts/product-queue/) e [`scripts/ranking/`](../scripts/ranking/); a decisão de acesso continua no `DECIDE_SCRIPT` da API. É o que impede um consumer que perdeu a concessão de confirmar um item, dois supervisores de decidirem o mesmo pedido ou leitores de observarem um ranking parcial. Rodados manualmente, um por um, esses comandos **não** têm essa garantia; para corrigir dado em produção, prefira a API.
 
 ## O que não está no Redis
 
