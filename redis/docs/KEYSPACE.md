@@ -8,7 +8,7 @@ Catálogo das chaves que a API Spring ([`inventra-development-spring-redis-neo4j
 | **Variáveis** | `REDIS_HOST`, `REDIS_PORT`, `REDIS_USERNAME`, `REDIS_PASSWORD`, `REDIS_DATABASE` (padrão `0`), `REDIS_SSL` |
 | **Cliente** | `StringRedisTemplate` (valores sempre string; JSON serializado pela API) |
 | **Timeouts** | conexão e comando: 10 s |
-| **Usos** | refresh tokens, pedidos de acesso à cozinha, fila de cadastro por código de barras e ranking de validade por cozinha |
+| **Usos** | refresh tokens, redefinição de senha, pedidos de acesso à cozinha, fila de cadastro por código de barras e ranking de validade por cozinha |
 
 ## Visão geral
 
@@ -16,6 +16,9 @@ Catálogo das chaves que a API Spring ([`inventra-development-spring-redis-neo4j
 |-----------------|------|-----|----------------------|
 | `rt:{hashDoToken}` | Hash | refresh (30 dias) | `RedisRefreshTokenStore` |
 | `rt:fam:{familyId}` | Set | refresh (30 dias), renovado a cada token | `RedisRefreshTokenStore` |
+| `inventra:password-reset:requests:{hashDoEmail}` | String (contador) | 1 h desde o primeiro pedido | `RedisPasswordResetStore` |
+| `inventra:password-reset:code:{userId}` | Hash | 15 min | `RedisPasswordResetStore` |
+| `inventra:password-reset:token:{hashDoToken}` | Hash | 15 min | `RedisPasswordResetStore` |
 | `kar:{id}` | Hash | 7 dias enquanto `PENDING`; sem TTL depois de decidido | `RedisKitchenAccessRequestStore` |
 | `kar:user:{userId}` | String | sem TTL | `RedisKitchenAccessRequestStore` |
 | `kar:user:{userId}:kitchens` | Hash | sem TTL | `RedisKitchenAccessRequestStore` |
@@ -46,6 +49,25 @@ Rotação de refresh token com detecção de reuso. A chave é o **hash** do tok
 
 - TTL: `jwt.refresh-expiration-ms` (padrão 2.592.000.000 ms = 30 dias, variável `JWT_REFRESH_EXPIRATION_MS`).
 - Reuso de um token com `usedAt` depois de 10 s de tolerância revoga a família inteira (`revokeFamily`).
+
+## Redefinição de senha (`inventra:password-reset:*`)
+
+Fluxo de "esqueci a senha" para o app e o web. O e-mail leva um **código de 6 dígitos** (digitado no app ou no web) e um **link** com token para a página web. O código, depois de verificado, vira um token de redefinição; o link já traz um. Os dois terminam no mesmo `reset`. Código, token e e-mail só são gravados como hash SHA-256.
+
+| Chave | Campo | Conteúdo |
+|-------|-------|----------|
+| `inventra:password-reset:requests:{hashDoEmail}` | valor | Pedidos de redefinição para o e-mail na janela atual; o e-mail é normalizado (trim + minúsculas) antes do hash |
+| `inventra:password-reset:code:{userId}` | `codeHash` | Hash de `{userId}:{código}`; um pedido novo substitui o código anterior |
+| | `attempts` | Tentativas de verificação do código atual |
+| `inventra:password-reset:token:{hashDoToken}` | `userId` | UUID do usuário |
+| | `pwd` | Impressão da senha no momento da emissão (a mesma de `rt:*`); trocar a senha invalida o token |
+
+- TTL do código e do token: `app.password-reset.ttl` (padrão 15 min). A janela do contador de pedidos é fixa em 1 h.
+- Até `app.password-reset.max-requests-per-hour` (padrão 5) pedidos por e-mail por hora; acima disso a API responde igual e não envia e-mail. A resposta do pedido não muda se o e-mail não existir, para não revelar quem tem conta.
+- Até `app.password-reset.max-attempts` (padrão 5) tentativas por código; na última errada o código é apagado e é preciso pedir outro. A verificação é atômica na API (`VERIFY_SCRIPT`, ver [`commands/auth/password-reset.redis`](../commands/auth/password-reset.redis)).
+- O token vale uma vez: o `reset` lê e apaga a chave na mesma transação (`MULTI`). Um token do link que não foi usado continua até o TTL, mas deixa de valer assim que a senha muda, pelo `pwd`.
+- Trocar a senha também invalida os access e refresh tokens já emitidos (mesma impressão `pwd`), então todas as sessões abertas caem.
+- Um código de 6 dígitos tem só 1 milhão de combinações: o hash não protege um código vazado do Redis por força bruta. O que limita o ataque online é o TTL curto e o limite de tentativas e de pedidos.
 
 ## Pedidos de acesso à cozinha (`kar:*`)
 
@@ -101,6 +123,7 @@ Cada operação da API está em [`commands/`](../commands), como a sequência de
 | Arquivo | Operações |
 |---------|-----------|
 | `auth/refresh-token.redis` | Emitir, validar, marcar como usado e revogar a família |
+| `auth/password-reset.redis` | Pedir redefinição, verificar o código e redefinir a senha |
 | `kitchen-access/request.redis` | Criar pedido pendente, ler, listar por usuário e por cozinha, limpar IDs expirados |
 | `kitchen-access/decide.redis` | Aprovar ou recusar |
 | `product-queue/enqueue.redis` | Enfileirar cadastro |
@@ -111,7 +134,7 @@ Cada operação da API está em [`commands/`](../commands), como a sequência de
 | `product-queue/quarantine.redis` | Payload inválido direto para a DLQ |
 | `ranking/expiration.redis` | Publicar atomicamente e consultar o ranking de validade por cozinha |
 
-**Atomicidade.** Nos arquivos que começam com "se ... para aqui" (`enqueue`, `recover`, `update`, `quarantine`, renovar/liberar em `lease` e `decide`), a API não manda os comandos um a um. Ela executa a sequência inteira de uma vez. Os scripts versionados estão em [`scripts/product-queue/`](../scripts/product-queue/) e [`scripts/ranking/`](../scripts/ranking/); a decisão de acesso continua no `DECIDE_SCRIPT` da API. É o que impede um consumer que perdeu a concessão de confirmar um item, dois supervisores de decidirem o mesmo pedido ou leitores de observarem um ranking parcial. Rodados manualmente, um por um, esses comandos **não** têm essa garantia; para corrigir dado em produção, prefira a API.
+**Atomicidade.** Nos arquivos que começam com "se ... para aqui" (`enqueue`, `recover`, `update`, `quarantine`, renovar/liberar em `lease`, `decide` e pedir/verificar em `password-reset`), a API não manda os comandos um a um. Ela executa a sequência inteira de uma vez. Os scripts versionados estão em [`scripts/product-queue/`](../scripts/product-queue/) e [`scripts/ranking/`](../scripts/ranking/); a decisão de acesso continua no `DECIDE_SCRIPT` da API, e a verificação do código de redefinição no `VERIFY_SCRIPT`. É o que impede um consumer que perdeu a concessão de confirmar um item, dois supervisores de decidirem o mesmo pedido, leitores de observarem um ranking parcial ou tentativas simultâneas de passarem do limite de um código. Rodados manualmente, um por um, esses comandos **não** têm essa garantia; para corrigir dado em produção, prefira a API.
 
 ## O que não está no Redis
 
@@ -121,6 +144,6 @@ Cada operação da API está em [`commands/`](../commands), como a sequência de
 
 - **Eviction:** `maxmemory-policy noeviction`. Pedidos pendentes, histórico de acesso e DLQ não têm TTL; uma política `allkeys-*` apagaria dados. Com memória cheia o Redis recusa a escrita e a API responde 503.
 - **Persistência:** AOF (`appendonly yes`, `appendfsync everysec`) + RDB. Na Aiven, conferir no console; localmente, [`config/redis.conf`](../config/redis.conf).
-- **Backup:** o Redis guarda estado operacional, não o cadastro. A fonte da verdade continua no PostgreSQL; a perda do Redis derruba sessões (todos fazem login de novo), pedidos de acesso pendentes e jobs da fila ainda não processados.
+- **Backup:** o Redis guarda estado operacional, não o cadastro. A fonte da verdade continua no PostgreSQL; a perda do Redis derruba sessões (todos fazem login de novo), pedidos de acesso pendentes, jobs da fila ainda não processados e redefinições de senha em andamento (basta pedir um código novo).
 - **Inspeção:** usar `SCAN` com padrão (`redis-cli --scan --pattern 'kar:kitchen:*'`), nunca `KEYS` em produção.
 - **Mudanças:** chave nova, campo novo ou TTL diferente na API entra neste documento e no arquivo de `commands/` correspondente, no mesmo PR da API.

@@ -65,7 +65,7 @@ O `build.py` só reescreve o bloco de dados do HTML; a interface é o próprio a
 |-------|-------|-----------|-------|----|
 | **PostgreSQL 16** | [`postgre/`](postgre) | API Spring | Fonte da verdade do cadastro, estoque, requisições, inventário, alertas e auditoria | [`migrations.yml`](.github/workflows/migrations.yml) |
 | **MongoDB 8** | [`mongo/`](mongo) | IA (IAI) | Banco `dbIAI`: conversas do chat e métricas de custo/latência por requisição | [`mongo.yml`](.github/workflows/mongo.yml) |
-| **Redis 7** | [`redis/`](redis) | API Spring | Refresh tokens, pedidos de acesso, fila de cadastro e ranking de validade | [`redis.yml`](.github/workflows/redis.yml) |
+| **Redis 7** | [`redis/`](redis) | API Spring | Refresh tokens, redefinição de senha, pedidos de acesso, fila de cadastro e ranking de validade | [`redis.yml`](.github/workflows/redis.yml) |
 | **Neo4j** | [`neo4j/`](neo4j) | nenhum serviço | Ainda não usado | sem CI |
 
 | Serviço | Repositório | Bancos |
@@ -244,6 +244,7 @@ As entregas **INV2-24, INV2-25 e INV2-26** estão versionadas em [`redis/`](redi
 | Uso | Chaves | TTL |
 |-----|--------|-----|
 | Refresh tokens (rotação e revogação por família) | `rt:{hash}`, `rt:fam:{familyId}` | 30 dias |
+| Redefinição de senha (código por e-mail e link para o web) | `inventra:password-reset:*` (`requests:{hashDoEmail}`, `code:{userId}`, `token:{hashDoToken}`) | 15 minutos; contador de pedidos 1 hora |
 | Pedidos de acesso à cozinha | `kar:{id}`, `kar:user:{userId}`, `kar:user:{userId}:kitchens`, `kar:kitchen:{kitchenId}` | 7 dias enquanto pendente; decidido fica como histórico |
 | Fila de cadastro por código de barras (FIFO, DLQ) | `inventra:product-registration:*` (`ready`, `job:{eventId}`, `pending`, `sequence`, `consumer-lock`, `errors`) | Pendentes sem TTL; resultado e DLQ 7 dias |
 | Ranking de lotes por validade | `inventra:ranking:expiration:{kitchenId}` | 60 segundos, renovados a cada reconstrução |
@@ -254,7 +255,7 @@ As entregas **INV2-24, INV2-25 e INV2-26** estão versionadas em [`redis/`](redi
 | **Comandos** | [`redis/commands/`](redis/commands): um arquivo `.redis` por operação da API, com os comandos passo a passo e comentados. São de leitura; a API executa as operações condicionais de uma vez só, de forma atômica |
 | **Scripts** | [`redis/scripts/`](redis/scripts): operações Lua atômicas da fila e publicação integral do ranking |
 | **Configuração** | [`redis.conf`](redis/config/redis.conf) de referência: `maxmemory-policy noeviction` (pendentes e histórico não têm TTL e não podem ser despejados) e AOF |
-| **Backup** | Não é fonte da verdade. Perder o Redis derruba sessões, pedidos de acesso pendentes e jobs ainda não processados; o cadastro continua no PostgreSQL |
+| **Backup** | Não é fonte da verdade. Perder o Redis derruba sessões, pedidos de acesso pendentes, jobs ainda não processados e redefinições de senha em andamento; o cadastro continua no PostgreSQL |
 | **Fora do Redis** | Os limites de tentativa de login e de busca de cozinha ficam em memória da instância da API |
 
 ### Quick start
