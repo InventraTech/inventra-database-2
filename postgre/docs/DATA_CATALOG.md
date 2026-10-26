@@ -64,7 +64,7 @@ Os níveis são **classificação documentada**: o banco não aplica `GRANT` com
 |----------|---------|
 | `MASTER_DATA` | `tb_user`, `tb_profile`, `tb_kitchen`, `tb_product`, `tb_category`, `tb_measurement_unit`, `tb_supplier` |
 | `RELATIONSHIP` | `tb_product_supplier`, `tb_product_kitchen_parameter` |
-| `TRANSACTION` | `tb_stock_batch`, `tb_requisition`, `tb_requisition_item`, `tb_inventory`, `tb_inventory_count`, `tb_stock_movement` |
+| `TRANSACTION` | `tb_stock_batch`, `tb_requisition`, `tb_requisition_item`, `tb_inventory`, `tb_inventory_count`, `tb_stock_movement`, `tb_pre_list`, `tb_pre_list_item` |
 | `EVENT` | `tb_alert`, `tb_alert_read`, `tb_user_daily_access`, `tb_ui_click_counter` |
 | `AUDIT` | `tb_log_base` e as 7 `tb_log_*` |
 | `GOVERNANCE` | as 3 tabelas do próprio catálogo |
@@ -124,7 +124,7 @@ CALL sp_sync_data_catalog();       -- só inclui o que falta
 CALL sp_sync_data_catalog(true);   -- inclui e remove o que saiu do schema
 ```
 
-A `V010` chama a procedure no final, e as migrations seguintes também (a `V011` acrescenta `tb_backup_history`, a `V013`, `tb_user_daily_access`, e a `V014`, `tb_ui_click_counter`, com uma linha de catálogo por contador). Com a carga atual, ela inclui 0 tabelas e encontra 0 colunas sem descrição, o que prova que o catálogo cobre o schema inteiro: 31 tabelas e 476 colunas.
+A `V010` chama a procedure no final, e as migrations seguintes também (a `V011` acrescenta `tb_backup_history`, a `V013`, `tb_user_daily_access`, a `V014`, `tb_ui_click_counter`, com uma linha de catálogo por contador, e a `V016`, `tb_pre_list` e `tb_pre_list_item`). Com a carga atual, ela inclui 0 tabelas e encontra 0 colunas sem descrição, o que prova que o catálogo cobre o schema inteiro: 33 tabelas e 484 colunas.
 
 Só entram tabelas com prefixo `tb_`, para ficarem de fora tabelas de ferramenta, como a `flyway_schema_history` que o Flyway cria no banco da API.
 

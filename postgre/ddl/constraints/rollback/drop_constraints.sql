@@ -141,3 +141,15 @@ DROP CONSTRAINT IF EXISTS ck_movement_reason;
 
 ALTER TABLE tb_stock_movement
 DROP CONSTRAINT IF EXISTS ck_movement_quantity;
+
+ALTER TABLE tb_pre_list_item
+DROP CONSTRAINT IF EXISTS fk_prelistitem_prelist;
+
+ALTER TABLE tb_pre_list_item
+DROP CONSTRAINT IF EXISTS fk_prelistitem_supplier;
+
+ALTER TABLE tb_pre_list_item
+DROP CONSTRAINT IF EXISTS fk_prelistitem_product;
+
+ALTER TABLE tb_pre_list_item
+DROP CONSTRAINT IF EXISTS ck_prelistitem_quantity;

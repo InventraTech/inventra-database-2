@@ -222,3 +222,22 @@ CHECK (
 	(type = 'ADJUSTMENT' AND quantity <> 0)
 	OR (type <> 'ADJUSTMENT' AND quantity > 0)
 );
+
+ALTER TABLE tb_pre_list_item
+ADD CONSTRAINT fk_prelistitem_prelist
+FOREIGN KEY (id_pre_list) REFERENCES tb_pre_list (id_pre_list)
+ON UPDATE NO ACTION ON DELETE NO ACTION;
+
+ALTER TABLE tb_pre_list_item
+ADD CONSTRAINT fk_prelistitem_supplier
+FOREIGN KEY (id_supplier) REFERENCES tb_supplier (id_supplier)
+ON UPDATE NO ACTION ON DELETE NO ACTION;
+
+ALTER TABLE tb_pre_list_item
+ADD CONSTRAINT fk_prelistitem_product
+FOREIGN KEY (id_product) REFERENCES tb_product (id_product)
+ON UPDATE NO ACTION ON DELETE NO ACTION;
+
+ALTER TABLE tb_pre_list_item
+ADD CONSTRAINT ck_prelistitem_quantity
+CHECK (quantity > 0);

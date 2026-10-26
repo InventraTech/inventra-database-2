@@ -12,7 +12,7 @@ Visão de como o repositório é organizado e por que, mais as decisões de desi
 
 ```mermaid
 flowchart LR
-    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V015"]
+    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V016"]
     M -->|psql / CI| DB[("PostgreSQL")]
     M -->|cópia byte a byte| API["ms-inventra-api<br/>Flyway"]
     R["rollback/<br/>drop_*.sql"] -.->|reverte| DB
@@ -37,6 +37,7 @@ flowchart LR
 | `V013__daily_active_users.sql` | `tb_user_daily_access`, `fn_register_daily_access`, `trg_register_daily_access` (em `tb_user.last_login`), `vw_dau` e `vw_dau_by_kitchen` |
 | `V014__ui_click_counter.sql` | `tb_ui_click_counter` (linha única, uma coluna contadora por coisa clicável), `vw_ui_click_ranking` e os metadados de cada coluna no catálogo |
 | `V015__user_profile_photo.sql` | Foto de perfil do usuário (`tb_user.photo_url`, URL do Cloudinary) |
+| `V016__pre_list.sql` | Pré-lista de compra (`tb_pre_list` e `tb_pre_list_item`): data da lista e itens com produto, fornecedor e quantidade |
 | `rollback/drop_everything.sql` | Reversão completa |
 
 As pastas de dicionário não têm numeração porque não representam sequência; a ordem de execução é definida só por `migrations/`.
@@ -44,7 +45,7 @@ As pastas de dicionário não têm numeração porque não representam sequênci
 ## Convenções
 
 - **Fonte da verdade:** este repositório é o dono do schema. Toda mudança nasce aqui, na pasta de dicionário correspondente **e** em `migrations`.
-- **Integração com a API:** `ms-inventra-api` apenas copia `V001` a `V015` byte a byte para `src/main/resources/db/migration` e o Flyway aplica. Nunca se edita migration direto na API.
+- **Integração com a API:** `ms-inventra-api` apenas copia `V001` a `V016` byte a byte para `src/main/resources/db/migration` e o Flyway aplica. Nunca se edita migration direto na API.
 - **Imutabilidade:** migrations são idempotentes e numeradas em sequência (`V006`, `V007`…). Uma migration já aplicada em algum banco não deve ser alterada; mudanças novas entram em uma nova versão.
 - **Mensagens em português:** os `RAISE EXCEPTION` das functions e procedures estão em português de propósito, porque a API os repassa ao cliente no `detail` das respostas 409.
 - **Job diário:** `sp_expire_batches()` marca lotes vencidos como `EXPIRED` e gera os alertas correspondentes. É chamada diariamente pelo `BatchExpirationJob` da API. `sp_alert_expiring_batches(p_days)` avisa **antes** de vencer e deve ser chamada pelo mesmo job.
@@ -56,7 +57,7 @@ As pastas de dicionário não têm numeração porque não representam sequênci
 
 `tests/check_migrations.sh` roda no GitHub Actions (`.github/workflows/migrations.yml`, PostgreSQL 16) e cobre quatro passos:
 
-1. aplica `V001`…`V015` em banco limpo;
+1. aplica `V001`…`V016` em banco limpo;
 2. reaplica tudo (prova de idempotência);
 3. executa `rollback/drop_everything.sql`;
 4. reaplica do zero após o rollback.

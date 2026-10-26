@@ -27,7 +27,6 @@ HTML = ROOT / "database-workspace.html"
 INTROSPECT = Path(__file__).with_name("introspect.sql")
 
 TEXT_EXT = {".py", ".sql", ".sh", ".js", ".json", ".md", ".redis", ".conf", ".yml", ".yaml", ".txt", ".ipynb", ".example", ".cypher"}
-SKIP = re.compile(r"^postgre/docs/modeling/.*\.json$")  # exports do editor de diagrama (milhares de linhas)
 SCOPES = ("postgre/", "mongo/", "redis/", "neo4j/", "scripts/", ".github/", "README.md", ".env.example")
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".svg", ".webp"}
 
@@ -69,7 +68,7 @@ def collect_files():
         if ext in IMAGE_EXT:
             images.append(path)
             continue
-        if (ext not in TEXT_EXT and not path.endswith(".env.example")) or SKIP.match(path):
+        if ext not in TEXT_EXT and not path.endswith(".env.example"):
             continue
         raw = p.read_text(encoding="utf-8").replace("\r\n", "\n")
         lang = {".sql": "sql", ".sh": "bash", ".js": "js", ".json": "json", ".md": "md", ".redis": "redis",

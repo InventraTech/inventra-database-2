@@ -42,7 +42,7 @@ Para navegar por tudo isso, abra o **[Database Workspace](database-workspace.htm
 
 ## Database Workspace
 
-[`database-workspace.html`](database-workspace.html) é a documentação navegável de todos os bancos, num único arquivo que abre direto no navegador (sem servidor nem instalação). No `main` ele é publicado no GitHub Pages por [`pages.yml`](.github/workflows/pages.yml):
+[`database-workspace.html`](database-workspace.html) é a documentação navegável de todos os bancos, num único arquivo que abre direto no navegador (sem servidor nem instalação). No `main` ele é publicado em [inventratech.github.io/inventra-database-2](https://inventratech.github.io/inventra-database-2/) por [`pages.yml`](.github/workflows/pages.yml), que o regenera a partir do schema real a cada deploy:
 
 - **PostgreSQL:** cada tabela com colunas, tipos, chaves, descrição, regra de negócio, nível de acesso e dado pessoal (LGPD) do catálogo; relacionamentos, índices, triggers, quem usa e o DDL. Diagrama ER interativo, dicionário de dados exportável em CSV, views, functions, procedures, triggers, índices, constraints e as migrations em ordem.
 - **MongoDB, Redis e Neo4j:** contrato das coleções com documento de exemplo, keyspace com os comandos de cada operação e o levantamento do grafo.
@@ -110,14 +110,14 @@ Banco relacional do ERP. Detalhes, convenções e decisões de design em [`ARCHI
 | | |
 |---|---|
 | **Domínio** | Lotes de estoque, requisições, inventário, fornecedores e alertas de vencimento |
-| **Modelo** | 18 tabelas de negócio + 8 de log (`tb_log_base` e 7 filhas por herança) + 4 de governança; 3FN demonstrada tabela a tabela |
+| **Modelo** | 20 tabelas de negócio + 8 de log (`tb_log_base` e 7 filhas por herança) + 4 de governança; 3FN demonstrada tabela a tabela |
 | **Regras no banco** | 6 functions + 7 procedures + 6 triggers de negócio |
 | **Auditoria** | Trigger `AFTER INSERT/UPDATE/DELETE` grava antes/depois (JSON) em 7 tabelas `tb_log_*` |
 | **Consulta** | 15+ views operacionais, 3 views analíticas (CTE + Window Functions), star schema virtual (4 `dim_*`, 3 `fact_*`) |
 | **Governança** | Catálogo de dados: descrição, regra de negócio e nível de acesso de cada tabela e coluna |
 | **Backup** | Backup gerenciado (Aiven) + `pg_dump` com restore testado no CI + recuperação de linha pela auditoria |
 | **Monitoramento** | DAU registrado pelo próprio banco a cada login (trigger em `tb_user.last_login`), com `vw_dau` e `vw_dau_by_kitchen` |
-| **Entrega** | Migrations idempotentes `V001`–`V015`, com rollback e validação no CI |
+| **Entrega** | Migrations idempotentes `V001`–`V016`, com rollback e validação no CI |
 
 ### Dicionário e migrations
 
@@ -125,7 +125,7 @@ O projeto separa o **dicionário** (código de leitura, um arquivo por assunto) 
 
 ```mermaid
 flowchart LR
-    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V015"]
+    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V016"]
     M -->|psql / CI| DB[("PostgreSQL")]
     M -->|cópia byte a byte| API["API Spring<br/>Flyway"]
     DB --> BI["Power BI / Metabase<br/>dim_* · fact_*"]
@@ -148,24 +148,26 @@ flowchart LR
 | `V013__daily_active_users.sql` | Registro automático de acessos (`tb_user_daily_access`) e DAU (`vw_dau`, `vw_dau_by_kitchen`) |
 | `V014__ui_click_counter.sql` | Contador de cliques: uma linha, uma coluna por coisa clicável do web e do mobile (`tb_ui_click_counter`), e `vw_ui_click_ranking` |
 | `V015__user_profile_photo.sql` | Foto de perfil do usuário (`tb_user.photo_url`, URL do Cloudinary) |
+| `V016__pre_list.sql` | Pré-lista de compra (`tb_pre_list` e `tb_pre_list_item`): data da lista e itens com produto, fornecedor e quantidade |
 
 > [!WARNING]
 > A API tem uma `V010__product_registration_event.sql` própria, que adiciona `tb_product.registration_event_id` para a fila Redis. Essa coluna ainda não está neste repositório, e o número `V010` aqui é o catálogo de dados. As migrations `V001`–`V009` são idênticas nos dois repositórios.
 
 ### Modelo de dados
 
-![Modelo lógico V3](postgre/docs/modeling/logical/V3/logical_model_v3.jpg)
+O diagrama entidade-relacionamento completo, gerado do schema real, está na aba **Modelagem** do [Database Workspace](https://inventratech.github.io/inventra-database-2/#/pg/model).
 
 | Grupo | Tabelas |
 |-------|---------|
 | **Cadastros base** | `tb_user`, `tb_profile`, `tb_kitchen`, `tb_product`, `tb_category`, `tb_measurement_unit`, `tb_supplier` |
 | **Relacionamentos** | `tb_product_supplier`, `tb_product_kitchen_parameter` |
 | **Movimentações** | `tb_stock_batch`, `tb_requisition`, `tb_requisition_item`, `tb_inventory`, `tb_inventory_count`, `tb_stock_movement` |
+| **Pré-lista** | `tb_pre_list`, `tb_pre_list_item` |
 | **Eventos** | `tb_alert`, `tb_alert_read`, `tb_user_daily_access`, `tb_ui_click_counter` |
 | **Auditoria** | `tb_log_base` + `tb_log_user`, `tb_log_product`, `tb_log_supplier`, `tb_log_stock_batch`, `tb_log_requisition`, `tb_log_inventory`, `tb_log_alert` |
 | **Governança** | `tb_catalog_access_level`, `tb_catalog_table`, `tb_catalog_column`, `tb_backup_history` |
 
-Outras versões do modelo (V1, V2 e auditoria) estão em [`docs/modeling`](postgre/docs/modeling). A normalização, as dependências funcionais e as cardinalidades de cada relacionamento estão em [`NORMALIZATION.md`](postgre/docs/normalization/NORMALIZATION.md).
+A normalização, as dependências funcionais e as cardinalidades de cada relacionamento estão em [`NORMALIZATION.md`](postgre/docs/normalization/NORMALIZATION.md).
 
 ### Quick start
 
@@ -299,7 +301,7 @@ postgre/
 ├── triggers/        # gatilhos de negócio e de auditoria
 ├── views/           # vw_*  ·  datamart/ (dim_*, fact_*)  ·  analytics/  ·  catalog/  ·  backup/  ·  monitoring/
 │                    #   (cada pasta tem subpasta rollback/)
-├── migrations/      # V001–V015 + rollback/drop_everything.sql
+├── migrations/      # V001–V016 + rollback/drop_everything.sql
 ├── backup/          # backup.sh e restore.sh (pg_dump); dumps/ fica fora do git
 ├── seeds/           # seed.ipynb + requirements.txt
 ├── tests/           # migrations (idempotência + rollback), integridade, DAU, backup/restore e dicionário × migrations
@@ -329,7 +331,7 @@ database-workspace.html  # documentação navegável de todos os bancos
 
 ### PostgreSQL
 
-1. A mudança nasce na pasta de dicionário correspondente **e** em uma **nova** migration, com o próximo número da sequência (hoje, `V015`). Migration já aplicada não se edita. Arquivo novo no dicionário entra também na lista `DICTIONARY` de `postgre/tests/check_dictionary_sync.sh`, que define a ordem de execução do dicionário.
+1. A mudança nasce na pasta de dicionário correspondente **e** em uma **nova** migration, com o próximo número da sequência (hoje, `V016`). Migration já aplicada não se edita. Arquivo novo no dicionário entra também na lista `DICTIONARY` de `postgre/tests/check_dictionary_sync.sh`, que define a ordem de execução do dicionário.
 2. Valide localmente com os mesmos scripts do CI, nesta ordem (todos usam as mesmas variáveis):
 
    ```bash

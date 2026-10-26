@@ -193,4 +193,3 @@ LIMIT 10;
 | `ddl/monitoring/load_ui_click_counter.sql` | Cria a linha única (sem zerar se já existir) |
 | `views/monitoring/create_monitoring_views.sql` | `vw_ui_click_ranking` |
 | `migrations/V014__ui_click_counter.sql` | Tudo acima, com guardas de idempotência e os metadados do catálogo |
-| `docs/modeling/logical/V4/ui_click_model_v1.png` e `.json` | Modelo lógico do contador: imagem e JSON no formato do DrawDB, como os outros modelos em `docs/modeling` |

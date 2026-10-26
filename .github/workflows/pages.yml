@@ -1,13 +1,21 @@
 name: pages
 
-# Publica o database-workspace.html no GitHub Pages.
-# O HTML é autossuficiente (dados embutidos); só as imagens da modelagem ficam ao lado.
+# Publica o Database Workspace no GitHub Pages.
+# O HTML é regenerado aqui, a partir de um PostgreSQL com todas as migrations aplicadas, para que o
+# site publicado sempre corresponda ao schema e aos arquivos do main (mesmo que o database-workspace.html
+# versionado esteja atrasado). O HTML é autossuficiente: dados e interface no mesmo arquivo.
 on:
   push:
     branches: [main]
     paths:
       - database-workspace.html
-      - postgre/docs/modeling/**
+      - README.md
+      - .env.example
+      - postgre/**
+      - mongo/**
+      - redis/**
+      - neo4j/**
+      - scripts/workspace/**
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -26,13 +34,36 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: inventra_db
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: inventra_db
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # o workspace mostra o histórico de commits
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Aplicar as migrations
+        run: for f in postgre/migrations/V*.sql; do psql -X -q -v ON_ERROR_STOP=1 --single-transaction -f "$f"; done
+      - name: Regenerar o workspace
+        run: python scripts/workspace/build.py
       - name: Montar o site
         run: |
-          mkdir -p _site/postgre/docs
+          mkdir -p _site
           cp database-workspace.html _site/index.html
-          cp -r postgre/docs/modeling _site/postgre/docs/modeling
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
         with:

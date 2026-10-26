@@ -740,3 +740,47 @@ SET description = EXCLUDED.description,
     id_access_level = EXCLUDED.id_access_level,
     is_personal_data = EXCLUDED.is_personal_data,
     updated_at = CURRENT_TIMESTAMP;
+
+-- ---------------------------------------------------
+-- PRE-LIST METADATA (V016)
+-- ---------------------------------------------------
+
+INSERT INTO tb_catalog_table (table_name, domain, description, business_rules, id_access_level, data_owner)
+SELECT v.table_name, v.domain, v.description, v.business_rules, al.id_access_level, v.data_owner
+FROM (VALUES
+	('tb_pre_list', 'TRANSACTION',
+	 'Pré-listas de compra: cabeçalho com a data da lista.',
+	 'Uma pré-lista tem N itens (1:N). É intenção de compra: não mexe em estoque nem vira requisição sozinha.',
+	 'INTERNAL', 'Compras'),
+	('tb_pre_list_item', 'TRANSACTION',
+	 'Itens (produto, fornecedor e quantidade) de cada pré-lista.',
+	 'Cada item aponta para um produto e um fornecedor cadastrados. Quantidade maior que zero (ck_prelistitem_quantity).',
+	 'INTERNAL', 'Compras')
+) AS v(table_name, domain, description, business_rules, access_code, data_owner)
+JOIN tb_catalog_access_level al ON al.code = v.access_code
+ON CONFLICT (table_name) DO UPDATE
+SET domain = EXCLUDED.domain,
+    description = EXCLUDED.description,
+    business_rules = EXCLUDED.business_rules,
+    id_access_level = EXCLUDED.id_access_level,
+    data_owner = EXCLUDED.data_owner,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO tb_catalog_column (id_catalog_table, column_name, description, business_rule, id_access_level, is_personal_data)
+SELECT t.id_catalog_table, v.column_name, v.description, v.business_rule, NULL, v.is_personal_data
+FROM (VALUES
+	('tb_pre_list', 'id_pre_list', 'Identificador da pré-lista.', NULL, false),
+	('tb_pre_list', 'list_date', 'Data da pré-lista.', 'Padrão: data de hoje.', false),
+	('tb_pre_list_item', 'id_pre_list_item', 'Identificador do item.', NULL, false),
+	('tb_pre_list_item', 'id_pre_list', 'Pré-lista a que o item pertence.', NULL, false),
+	('tb_pre_list_item', 'id_supplier', 'Fornecedor do item.', NULL, false),
+	('tb_pre_list_item', 'id_product', 'Produto a comprar.', NULL, false),
+	('tb_pre_list_item', 'quantity', 'Quantidade a comprar.', 'Maior que zero (ck_prelistitem_quantity).', false)
+) AS v(table_name, column_name, description, business_rule, is_personal_data)
+JOIN tb_catalog_table t ON t.table_name = v.table_name
+ON CONFLICT (id_catalog_table, column_name) DO UPDATE
+SET description = EXCLUDED.description,
+    business_rule = EXCLUDED.business_rule,
+    id_access_level = EXCLUDED.id_access_level,
+    is_personal_data = EXCLUDED.is_personal_data,
+    updated_at = CURRENT_TIMESTAMP;
