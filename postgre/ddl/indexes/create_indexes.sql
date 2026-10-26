@@ -142,3 +142,15 @@ ON tb_stock_movement (id_requisition);
 
 CREATE INDEX idx_movement_created_at
 ON tb_stock_movement (created_at);
+
+CREATE INDEX idx_prelist_list_date
+ON tb_pre_list (list_date);
+
+CREATE INDEX idx_prelistitem_prelist
+ON tb_pre_list_item (id_pre_list);
+
+CREATE INDEX idx_prelistitem_supplier
+ON tb_pre_list_item (id_supplier);
+
+CREATE INDEX idx_prelistitem_product
+ON tb_pre_list_item (id_product);
