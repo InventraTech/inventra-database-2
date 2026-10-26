@@ -62,7 +62,7 @@ Em todas as tabelas abaixo, a única DF é **chave → demais colunas**, exceto 
 | `tb_stock_batch` | `id_batch` | `id_batch → id_product, id_kitchen, id_supplier, batch_number, invoice_number, initial_quantity, current_quantity, entry_date, expiration_date, unit_price, status` | `current_quantity`: [R2](#r2-saldo-do-lote-current_quantity) |
 | `tb_requisition` | `id_requisition` | `id_requisition → requisition_type, origin, status, reason, id_kitchen, id_requester_user, id_approver_user, created_at, approved_at` | |
 | `tb_requisition_item` | `id_requisition_item` | `id_requisition_item → id_requisition, id_product, id_suggested_supplier, quantity, estimated_price, note` | `estimated_price` é retrato do momento: veja a [seção 5.1](#51-retratos-históricos-não-são-redundância) |
-| `tb_pre_list` | `id_pre_list` | `id_pre_list → list_date` | |
+| `tb_pre_list` | `id_pre_list` | `id_pre_list → list_date, id_source` | `id_source` é chave candidata (`UNIQUE`): `id_source → id_pre_list, list_date`; todo determinante é chave, então segue em FNBC |
 | `tb_pre_list_item` | `id_pre_list_item` | `id_pre_list_item → id_pre_list, id_supplier, id_product, quantity` | O fornecedor fica no item (não em `tb_product`) porque a mesma lista pode comprar o mesmo produto de fornecedores diferentes |
 | `tb_inventory` | `id_inventory` | `id_inventory → id_kitchen, id_responsible_user, started_at, closed_at, status, note` | |
 | `tb_inventory_count` | `id_count` | `id_count → id_inventory, id_batch, registered_quantity, physical_quantity, divergence` e `(physical_quantity, registered_quantity) → divergence` | `divergence`: [R1](#r1-divergência-do-inventário-divergence) |

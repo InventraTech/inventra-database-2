@@ -165,6 +165,10 @@ ALTER TABLE tb_user
 ADD CONSTRAINT uq_user_firebase_uid
 UNIQUE (firebase_uid);
 
+ALTER TABLE tb_pre_list
+ADD CONSTRAINT uq_prelist_id_source
+UNIQUE (id_source);
+
 -- ---------------------------------------------------
 -- CHECK CONSTRAINTS
 -- ---------------------------------------------------
