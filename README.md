@@ -42,7 +42,7 @@ Para navegar por tudo isso, abra o **[Database Workspace](database-workspace.htm
 
 ## Database Workspace
 
-[`database-workspace.html`](database-workspace.html) é a documentação navegável de todos os bancos, num único arquivo que abre direto no navegador (sem servidor nem instalação). No `main` ele é publicado no GitHub Pages por [`pages.yml`](.github/workflows/pages.yml):
+[`database-workspace.html`](database-workspace.html) é a documentação navegável de todos os bancos, num único arquivo que abre direto no navegador (sem servidor nem instalação). No `main` ele é publicado em [inventratech.github.io/inventra-database-2](https://inventratech.github.io/inventra-database-2/) por [`pages.yml`](.github/workflows/pages.yml), que o regenera a partir do schema real a cada deploy:
 
 - **PostgreSQL:** cada tabela com colunas, tipos, chaves, descrição, regra de negócio, nível de acesso e dado pessoal (LGPD) do catálogo; relacionamentos, índices, triggers, quem usa e o DDL. Diagrama ER interativo, dicionário de dados exportável em CSV, views, functions, procedures, triggers, índices, constraints e as migrations em ordem.
 - **MongoDB, Redis e Neo4j:** contrato das coleções com documento de exemplo, keyspace com os comandos de cada operação e o levantamento do grafo.
@@ -155,7 +155,7 @@ flowchart LR
 
 ### Modelo de dados
 
-![Modelo lógico V3](postgre/docs/modeling/logical/V3/logical_model_v3.jpg)
+O diagrama entidade-relacionamento completo, gerado do schema real, está na aba **Modelagem** do [Database Workspace](https://inventratech.github.io/inventra-database-2/#/pg/model).
 
 | Grupo | Tabelas |
 |-------|---------|
@@ -167,7 +167,7 @@ flowchart LR
 | **Auditoria** | `tb_log_base` + `tb_log_user`, `tb_log_product`, `tb_log_supplier`, `tb_log_stock_batch`, `tb_log_requisition`, `tb_log_inventory`, `tb_log_alert` |
 | **Governança** | `tb_catalog_access_level`, `tb_catalog_table`, `tb_catalog_column`, `tb_backup_history` |
 
-Outras versões do modelo (V1, V2 e auditoria) estão em [`docs/modeling`](postgre/docs/modeling). A normalização, as dependências funcionais e as cardinalidades de cada relacionamento estão em [`NORMALIZATION.md`](postgre/docs/normalization/NORMALIZATION.md).
+A normalização, as dependências funcionais e as cardinalidades de cada relacionamento estão em [`NORMALIZATION.md`](postgre/docs/normalization/NORMALIZATION.md).
 
 ### Quick start
 
