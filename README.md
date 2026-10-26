@@ -7,11 +7,12 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-8-47A248?logo=mongodb&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
-![Neo4j](https://img.shields.io/badge/Neo4j-proposto-lightgrey?logo=neo4j&logoColor=white)
+![Neo4j](https://img.shields.io/badge/Neo4j-5-4581C3?logo=neo4j&logoColor=white)
 <br />
 [![Migrations](https://github.com/InventraTech/inventra-database-2/actions/workflows/migrations.yml/badge.svg)](https://github.com/InventraTech/inventra-database-2/actions/workflows/migrations.yml)
 [![mongo](https://github.com/InventraTech/inventra-database-2/actions/workflows/mongo.yml/badge.svg)](https://github.com/InventraTech/inventra-database-2/actions/workflows/mongo.yml)
 [![redis](https://github.com/InventraTech/inventra-database-2/actions/workflows/redis.yml/badge.svg)](https://github.com/InventraTech/inventra-database-2/actions/workflows/redis.yml)
+[![neo4j](https://github.com/InventraTech/inventra-database-2/actions/workflows/neo4j.yml/badge.svg)](https://github.com/InventraTech/inventra-database-2/actions/workflows/neo4j.yml)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 </div>
@@ -21,7 +22,7 @@ Bancos de dados do projeto interdisciplinar **Inventra**. Este repositório é a
 - **PostgreSQL:** tabelas, regras de negócio em SQL, auditoria automática, camada de consulta e Data Mart para BI.
 - **MongoDB:** o contrato das coleções da IA.
 - **Redis:** o catálogo de chaves e os comandos de cada operação da API.
-- **Neo4j:** o levantamento de uso e a proposta de projeção de cobertura de fornecedores.
+- **Neo4j:** a projeção de grafo para cobertura de fornecedores por requisição (especificação, Cypher, massa de teste, reprojeção e CI).
 
 Para navegar por tudo isso, abra o **[Database Workspace](database-workspace.html)**.
 
@@ -45,7 +46,7 @@ Para navegar por tudo isso, abra o **[Database Workspace](database-workspace.htm
 [`database-workspace.html`](database-workspace.html) é a documentação navegável de todos os bancos, num único arquivo que abre direto no navegador (sem servidor nem instalação). No `main` ele é publicado em [inventratech.github.io/inventra-database-2](https://inventratech.github.io/inventra-database-2/) por [`pages.yml`](.github/workflows/pages.yml), que o regenera a partir do schema real a cada deploy:
 
 - **PostgreSQL:** cada tabela com colunas, tipos, chaves, descrição, regra de negócio, nível de acesso e dado pessoal (LGPD) do catálogo; relacionamentos, índices, triggers, quem usa e o DDL. Diagrama ER interativo, dicionário de dados exportável em CSV, views, functions, procedures, triggers, índices, constraints e as migrations em ordem.
-- **MongoDB, Redis e Neo4j:** contrato das coleções com documento de exemplo, keyspace com os comandos de cada operação e o levantamento do grafo.
+- **MongoDB, Redis e Neo4j:** contrato das coleções com documento de exemplo, keyspace com os comandos de cada operação e a cobertura de fornecedores no grafo (modelo, ranking de exemplo, Cypher e a especificação completa).
 - **Repositório:** todos os scripts com realce de sintaxe e links para os objetos, os documentos `.md` renderizados e o histórico de commits.
 - **Busca global** (`Ctrl K` ou `/`) por tabela, coluna, objeto, chave, arquivo e trecho de código; tema claro e escuro.
 
@@ -66,11 +67,11 @@ O `build.py` só reescreve o bloco de dados do HTML; a interface é o próprio a
 | **PostgreSQL 16** | [`postgre/`](postgre) | API Spring | Fonte da verdade do cadastro, estoque, requisições, inventário, alertas e auditoria | [`migrations.yml`](.github/workflows/migrations.yml) |
 | **MongoDB 8** | [`mongo/`](mongo) | IA (IAI) | Banco `dbIAI`: conversas do chat e métricas de custo/latência por requisição | [`mongo.yml`](.github/workflows/mongo.yml) |
 | **Redis 7** | [`redis/`](redis) | API Spring | Refresh tokens, redefinição de senha, pedidos de acesso, fila de cadastro e ranking de validade | [`redis.yml`](.github/workflows/redis.yml) |
-| **Neo4j** | [`neo4j/`](neo4j) | nenhum serviço | Proposta: cobertura de fornecedores por requisição (ainda não usado) | sem CI |
+| **Neo4j 5** | [`neo4j/`](neo4j) | API Spring (proposto) | Projeção de leitura para cobertura de fornecedores por requisição | [`neo4j.yml`](.github/workflows/neo4j.yml) |
 
 | Serviço | Repositório | Bancos |
 |---------|-------------|--------|
-| API Spring | [`inventra-development-spring-redis-neo4j-2`](https://github.com/InventraTech/inventra-development-spring-redis-neo4j-2) | PostgreSQL (Flyway) e Redis; Neo4j só no nome |
+| API Spring | [`inventra-development-spring-redis-neo4j-2`](https://github.com/InventraTech/inventra-development-spring-redis-neo4j-2) | PostgreSQL (Flyway) e Redis; Neo4j previsto para a análise de cobertura de fornecedores |
 | IA (IAI) | [`inventra-artificial-intelligence-2`](https://github.com/InventraTech/inventra-artificial-intelligence-2) | MongoDB; o estoque é consultado pela API, não direto no PostgreSQL |
 | API Spring MongoDB | [`inventra-development-mongo-2`](https://github.com/InventraTech/inventra-development-mongo-2) | Prevista; o repositório ainda não tem código |
 
@@ -93,6 +94,9 @@ flowchart LR
     REPO["inventra-database-2"] -.->|migrations V001…| PG
     REPO -.->|migrations V001…| MG
     REPO -.->|KEYSPACE · commands| RD
+    PG -.->|outbox · reprojeção| N4J[("Neo4j<br/>projeção: cobertura de fornecedores")]
+    API -.->|ranking de cobertura| N4J
+    REPO -.->|migrations V001…| N4J
 ```
 
 O que vai para cada banco a partir deste repositório:
@@ -102,6 +106,7 @@ O que vai para cada banco a partir deste repositório:
 | PostgreSQL | `postgre/migrations/V*.sql`, consolidadas a partir do dicionário (`ddl/`, `functions/`, `procedures/`, `triggers/`, `views/`) | A API copia as migrations byte a byte e o Flyway aplica |
 | MongoDB | `mongo/migrations/V*.js`, a partir de `schemas/` e `indexes/` | `mongosh`; a IAI também cria os mesmos índices no startup |
 | Redis | Não há schema. `redis/docs/KEYSPACE.md` e `redis/commands/` descrevem o que a API grava | A própria API |
+| Neo4j | `neo4j/migrations/V*.cypher`, a partir de `constraints/` e `indexes/`; dados pelos eventos de `neo4j/projection/` | `cypher-shell`; o worker de projeção da API; `neo4j/seeds/seed.ipynb` reconstrói a partir do PostgreSQL |
 
 ## PostgreSQL
 
@@ -274,9 +279,20 @@ Para inspecionar, use `SCAN` com padrão (`redis-cli --scan --pattern 'kar:kitch
 
 ## Neo4j
 
-**Não usado.** Nenhum serviço conecta ao Neo4j hoje: o repositório da API cita Neo4j no nome, mas não tem dependência, configuração nem código. O levantamento de uso e a estrutura prevista estão em [`neo4j/README.md`](neo4j/README.md).
+Projeção de grafo para uma única decisão: **quais fornecedores atendem os produtos de uma requisição**, com lacunas, custo de referência e prazo máximo ([INV2-27](https://inventraoficial.atlassian.net/browse/INV2-27)). O PostgreSQL continua a fonte da verdade; o grafo é uma projeção de leitura reconstruível. Especificação completa em [`COBERTURA_FORNECEDORES.md`](neo4j/docs/COBERTURA_FORNECEDORES.md), com o [PDF original](neo4j/docs/Inventra_Neo4j_Cobertura_Fornecedores.pdf).
 
-Há uma **proposta** de projeção em grafo para a cobertura de fornecedores por requisição (`Requisition → Product ← Supplier`), com constraints, índices, consultas Cypher e seed em [`neo4j/`](neo4j) e a especificação em [`COBERTURA_FORNECEDORES.md`](neo4j/docs/COBERTURA_FORNECEDORES.md). Os scripts foram validados num Neo4j 5 descartável, mas não rodam no CI.
+```text
+(:Requisition)-[:REQUESTS]->(:Product)<-[:SUPPLIES]-(:Supplier)
+```
+
+| | |
+|---|---|
+| **Status** | Proposta implementável. Cypher, massa de teste e reprojeção versionados e testados num `neo4j:5` no CI; nenhum serviço conecta ainda e o endpoint `GET /api/requisitions/{id}/supplier-coverage` não existe na API |
+| **Schema** | [`V001__supplier_coverage.cypher`](neo4j/migrations/V001__supplier_coverage.cypher): unicidade de `id` nos três rótulos, índices em `Requisition.kitchenId` e `Supplier.active` |
+| **Projeção** | [`neo4j/projection/`](neo4j/projection): um `.cypher` idempotente por evento do outbox (upsert e remoção) |
+| **Consulta** | [`supplier_coverage.cypher`](neo4j/queries/supplier_coverage.cypher): ranking por cobertura, prazo, rating e custo, sempre filtrado por `kitchenId` |
+| **Reprojeção** | [`seeds/seed.ipynb`](neo4j/seeds/seed.ipynb) lê o PostgreSQL, reprojeta e compara contagens |
+| **Backup** | Não é fonte da verdade: perder o Neo4j só desliga a análise; a reprojeção recria tudo |
 
 ## Documentação
 
@@ -293,8 +309,8 @@ Há uma **proposta** de projeção em grafo para a cobertura de fornecedores por
 | PostgreSQL | [`EXPLAIN_ANALYZE.md`](postgre/docs/query_optimization/EXPLAIN_ANALYZE.md) | Otimização de consultas: planos antes/depois dos 4 índices criados |
 | MongoDB | [`MONGO_MODEL.md`](mongo/docs/MONGO_MODEL.md) | Coleções, contrato `$jsonSchema`, índices, validação, retenção e esteira |
 | Redis | [`KEYSPACE.md`](redis/docs/KEYSPACE.md) | Cada chave (tipo, campos, TTL, dono), comandos por operação e operação do serviço |
-| Neo4j | [`README.md`](neo4j/README.md) | Levantamento (não usado) e estrutura prevista |
-| Neo4j | [`COBERTURA_FORNECEDORES.md`](neo4j/docs/COBERTURA_FORNECEDORES.md) | Proposta de projeção em grafo: modelo, Cypher, contrato REST, testes e operação |
+| Neo4j | [`COBERTURA_FORNECEDORES.md`](neo4j/docs/COBERTURA_FORNECEDORES.md) | Cobertura de fornecedores (conteúdo completo do PDF): modelo, sincronização, Cypher, contrato REST, testes, DevOps, grafo × SQL e aderência ao INV2-27 |
+| Neo4j | [`README.md`](neo4j/README.md) | Estrutura da pasta, eventos de projeção, resultado esperado e como validar |
 
 ## Estrutura do repositório
 
@@ -325,10 +341,18 @@ redis/
 ├── tests/           # keyspace, redis.conf e scripts validados num redis:7
 ├── docs/            # KEYSPACE, fila de produtos e ranking
 └── README.md         # mapa das entregas INV2-24/25/26
-neo4j/               # levantamento + proposta de cobertura de fornecedores: constraints/, indexes/, queries/, seeds/ e docs/ (ainda sem uso)
+neo4j/
+├── constraints/     # unicidade de Requisition, Product e Supplier + rollback/
+├── indexes/         # kitchenId e active + rollback/
+├── migrations/      # V001__supplier_coverage.cypher + rollback/drop_everything.cypher
+├── projection/      # um .cypher por evento do outbox (upsert e remoção)
+├── queries/         # traversal de cobertura e produtos sem fornecedor
+├── seeds/           # massa 4×3 da especificação + seed.ipynb (reprojeção do PostgreSQL)
+├── tests/           # schema e traversal validados num neo4j:5
+└── docs/            # COBERTURA_FORNECEDORES.md + PDF original
 scripts/workspace/   # build.py + introspect.sql: geram os dados do database-workspace.html
 database-workspace.html  # documentação navegável de todos os bancos
-.github/workflows/   # CI: PostgreSQL, MongoDB e contrato/scripts Redis
+.github/workflows/   # CI: PostgreSQL, MongoDB, contrato/scripts Redis e Neo4j
 .env.example         # variáveis de conexão usadas pelos seeds, backups e testes
 ```
 
@@ -388,6 +412,20 @@ database-workspace.html  # documentação navegável de todos os bancos
    ```
 4. O CI roda esses três testes em cada push/PR que toque `redis/`.
 
+### Neo4j
+
+1. Mudança de schema entra em `neo4j/constraints/` ou `neo4j/indexes/` **e** numa nova `neo4j/migrations/V00N__*.cypher` idempotente (`IF NOT EXISTS`). Mudança na projeção entra no `.cypher` do evento em `neo4j/projection/`, no mesmo PR da API.
+2. Valide num Neo4j descartável, com os mesmos scripts do CI:
+
+   ```bash
+   docker run -d --name inventra-neo4j-test -e NEO4J_AUTH=none -v "$PWD:/repo" neo4j:5
+   docker exec inventra-neo4j-test bash /repo/neo4j/tests/check_migrations.sh
+   docker exec inventra-neo4j-test bash /repo/neo4j/tests/check_supplier_coverage.sh
+   ```
+
+   O primeiro aplica a V001 duas vezes, compara com o dicionário, faz rollback e reaplica. O segundo carrega a massa 4×3 e confere o ranking (Alfa, Gama, Beta; 75/75/50%), o isolamento por cozinha e cada evento de projeção. Os dois apagam a projeção: nunca rodar contra o banco real.
+3. O CI roda esses dois testes em cada push/PR que toque `neo4j/`.
+
 ## Roadmap
 
 - [x] Functions, procedures e triggers de negócio
@@ -402,7 +440,8 @@ database-workspace.html  # documentação navegável de todos os bancos
 - [x] Contrato do MongoDB da IA (`$jsonSchema`, índices, seed e CI)
 - [x] Catálogo de chaves e comandos por operação do Redis
 - [ ] `tb_product.registration_event_id` da fila Redis no `postgre/` (hoje só na `V010` da API)
-- [ ] Modelo de grafo no Neo4j
+- [x] Modelo de grafo no Neo4j (cobertura de fornecedores: Cypher, massa de teste, reprojeção e CI)
+- [ ] Endpoint de cobertura de fornecedores e worker de projeção na API
 - [ ] Ambiente de homologação
 
 ## Contribuidores
