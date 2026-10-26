@@ -117,7 +117,7 @@ Banco relacional do ERP. Detalhes, convenções e decisões de design em [`ARCHI
 | **Governança** | Catálogo de dados: descrição, regra de negócio e nível de acesso de cada tabela e coluna |
 | **Backup** | Backup gerenciado (Aiven) + `pg_dump` com restore testado no CI + recuperação de linha pela auditoria |
 | **Monitoramento** | DAU registrado pelo próprio banco a cada login (trigger em `tb_user.last_login`), com `vw_dau` e `vw_dau_by_kitchen` |
-| **Entrega** | Migrations idempotentes `V001`–`V017`, com rollback e validação no CI |
+| **Entrega** | Migrations idempotentes `V001`–`V018`, com rollback e validação no CI |
 
 ### Dicionário e migrations
 
@@ -125,7 +125,7 @@ O projeto separa o **dicionário** (código de leitura, um arquivo por assunto) 
 
 ```mermaid
 flowchart LR
-    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V017"]
+    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V018"]
     M -->|psql / CI| DB[("PostgreSQL")]
     M -->|cópia byte a byte| API["API Spring<br/>Flyway"]
     DB --> BI["Power BI / Metabase<br/>dim_* · fact_*"]
@@ -150,6 +150,7 @@ flowchart LR
 | `V015__user_profile_photo.sql` | Foto de perfil do usuário (`tb_user.photo_url`, URL do Cloudinary) |
 | `V016__pre_list.sql` | Pré-lista de compra (`tb_pre_list` e `tb_pre_list_item`): data da lista e itens com produto, fornecedor e quantidade |
 | `V017__pre_list_id_source.sql` | `tb_pre_list.id_source` (único, opcional): id da pré-lista no banco do 1º ano, para o RPA não importar a mesma lista duas vezes |
+| `V018__pre_list_kitchen.sql` | `tb_pre_list.id_kitchen` (FK para `tb_kitchen`, opcional, com índice): cozinha da pré-lista, para filtrar as listas por cozinha |
 
 > [!WARNING]
 > A API tem uma `V010__product_registration_event.sql` própria, que adiciona `tb_product.registration_event_id` para a fila Redis. Essa coluna ainda não está neste repositório, e o número `V010` aqui é o catálogo de dados. As migrations `V001`–`V009` são idênticas nos dois repositórios.
@@ -305,7 +306,7 @@ postgre/
 ├── triggers/        # gatilhos de negócio e de auditoria
 ├── views/           # vw_*  ·  datamart/ (dim_*, fact_*)  ·  analytics/  ·  catalog/  ·  backup/  ·  monitoring/
 │                    #   (cada pasta tem subpasta rollback/)
-├── migrations/      # V001–V017 + rollback/drop_everything.sql
+├── migrations/      # V001–V018 + rollback/drop_everything.sql
 ├── backup/          # backup.sh e restore.sh (pg_dump); dumps/ fica fora do git
 ├── seeds/           # seed.ipynb + requirements.txt
 ├── tests/           # migrations (idempotência + rollback), integridade, DAU, backup/restore e dicionário × migrations
@@ -335,7 +336,7 @@ database-workspace.html  # documentação navegável de todos os bancos
 
 ### PostgreSQL
 
-1. A mudança nasce na pasta de dicionário correspondente **e** em uma **nova** migration, com o próximo número da sequência (hoje, `V017`). Migration já aplicada não se edita. Arquivo novo no dicionário entra também na lista `DICTIONARY` de `postgre/tests/check_dictionary_sync.sh`, que define a ordem de execução do dicionário.
+1. A mudança nasce na pasta de dicionário correspondente **e** em uma **nova** migration, com o próximo número da sequência (hoje, `V018`). Migration já aplicada não se edita. Arquivo novo no dicionário entra também na lista `DICTIONARY` de `postgre/tests/check_dictionary_sync.sh`, que define a ordem de execução do dicionário.
 2. Valide localmente com os mesmos scripts do CI, nesta ordem (todos usam as mesmas variáveis):
 
    ```bash

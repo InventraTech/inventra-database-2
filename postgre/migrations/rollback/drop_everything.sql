@@ -1,5 +1,5 @@
 -- =====================================================
--- FULL TEARDOWN — reverses V001 through V017
+-- FULL TEARDOWN — reverses V001 through V018
 -- =====================================================
 -- WARNING: destructive and irreversible. Drops every table
 -- (and all data in them), view, function, procedure, trigger,

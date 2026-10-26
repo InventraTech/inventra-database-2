@@ -227,6 +227,11 @@ CHECK (
 	OR (type <> 'ADJUSTMENT' AND quantity > 0)
 );
 
+ALTER TABLE tb_pre_list
+ADD CONSTRAINT fk_prelist_kitchen
+FOREIGN KEY (id_kitchen) REFERENCES tb_kitchen (id_kitchen)
+ON UPDATE NO ACTION ON DELETE NO ACTION;
+
 ALTER TABLE tb_pre_list_item
 ADD CONSTRAINT fk_prelistitem_prelist
 FOREIGN KEY (id_pre_list) REFERENCES tb_pre_list (id_pre_list)
