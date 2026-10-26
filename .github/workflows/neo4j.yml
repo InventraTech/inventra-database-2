@@ -1,0 +1,21 @@
+name: neo4j
+
+on:
+  push:
+    paths: ['neo4j/**', '.github/workflows/neo4j.yml']
+  pull_request:
+    paths: ['neo4j/**', '.github/workflows/neo4j.yml']
+
+jobs:
+  check-neo4j:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # cypher-shell vem na imagem; o repositório é montado para os scripts rodarem dentro do container
+      - run: docker run -d --name neo4j -e NEO4J_AUTH=none -v "$GITHUB_WORKSPACE:/repo" neo4j:5
+      - run: |
+          timeout 120 bash -c 'until docker exec neo4j cypher-shell "RETURN 1" > /dev/null 2>&1; do sleep 2; done'
+      # V001 idempotente, dicionário × migration e rollback
+      - run: docker exec neo4j bash /repo/neo4j/tests/check_migrations.sh
+      # traversal de cobertura com a massa 4×3 e os eventos de projeção
+      - run: docker exec neo4j bash /repo/neo4j/tests/check_supplier_coverage.sh
