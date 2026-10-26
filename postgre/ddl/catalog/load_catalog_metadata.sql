@@ -742,7 +742,7 @@ SET description = EXCLUDED.description,
     updated_at = CURRENT_TIMESTAMP;
 
 -- ---------------------------------------------------
--- PRE-LIST METADATA (V016)
+-- PRE-LIST METADATA (V016 e V017)
 -- ---------------------------------------------------
 
 INSERT INTO tb_catalog_table (table_name, domain, description, business_rules, id_access_level, data_owner)
@@ -750,7 +750,7 @@ SELECT v.table_name, v.domain, v.description, v.business_rules, al.id_access_lev
 FROM (VALUES
 	('tb_pre_list', 'TRANSACTION',
 	 'Pré-listas de compra: cabeçalho com a data da lista.',
-	 'Uma pré-lista tem N itens (1:N). É intenção de compra: não mexe em estoque nem vira requisição sozinha.',
+	 'Uma pré-lista tem N itens (1:N). É intenção de compra: não mexe em estoque nem em requisições. A integração RPA grava aqui as listas do banco do 1º ano e usa id_source para não importar a mesma lista duas vezes.',
 	 'INTERNAL', 'Compras'),
 	('tb_pre_list_item', 'TRANSACTION',
 	 'Itens (produto, fornecedor e quantidade) de cada pré-lista.',
@@ -771,6 +771,7 @@ SELECT t.id_catalog_table, v.column_name, v.description, v.business_rule, NULL, 
 FROM (VALUES
 	('tb_pre_list', 'id_pre_list', 'Identificador da pré-lista.', NULL, false),
 	('tb_pre_list', 'list_date', 'Data da pré-lista.', 'Padrão: data de hoje.', false),
+	('tb_pre_list', 'id_source', 'Id da pré-lista no banco do 1º ano (origem da integração RPA).', 'Único (uq_prelist_id_source). Nulo nas listas criadas direto no Inventra; o RPA usa o valor para não importar a mesma lista duas vezes.', false),
 	('tb_pre_list_item', 'id_pre_list_item', 'Identificador do item.', NULL, false),
 	('tb_pre_list_item', 'id_pre_list', 'Pré-lista a que o item pertence.', NULL, false),
 	('tb_pre_list_item', 'id_supplier', 'Fornecedor do item.', NULL, false),
