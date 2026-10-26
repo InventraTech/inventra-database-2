@@ -145,6 +145,9 @@ DROP CONSTRAINT IF EXISTS ck_movement_quantity;
 ALTER TABLE tb_pre_list
 DROP CONSTRAINT IF EXISTS uq_prelist_id_source;
 
+ALTER TABLE tb_pre_list
+DROP CONSTRAINT IF EXISTS fk_prelist_kitchen;
+
 ALTER TABLE tb_pre_list_item
 DROP CONSTRAINT IF EXISTS fk_prelistitem_prelist;
 

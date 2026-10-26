@@ -98,6 +98,8 @@ DROP INDEX IF EXISTS idx_movement_created_at;
 
 DROP INDEX IF EXISTS idx_prelist_list_date;
 
+DROP INDEX IF EXISTS idx_prelist_kitchen;
+
 DROP INDEX IF EXISTS idx_prelistitem_prelist;
 
 DROP INDEX IF EXISTS idx_prelistitem_supplier;

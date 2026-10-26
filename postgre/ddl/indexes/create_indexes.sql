@@ -146,6 +146,9 @@ ON tb_stock_movement (created_at);
 CREATE INDEX idx_prelist_list_date
 ON tb_pre_list (list_date);
 
+CREATE INDEX idx_prelist_kitchen
+ON tb_pre_list (id_kitchen);
+
 CREATE INDEX idx_prelistitem_prelist
 ON tb_pre_list_item (id_pre_list);
 
