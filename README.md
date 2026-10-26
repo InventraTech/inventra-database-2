@@ -7,7 +7,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-8-47A248?logo=mongodb&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
-![Neo4j](https://img.shields.io/badge/Neo4j-não_usado-lightgrey?logo=neo4j&logoColor=white)
+![Neo4j](https://img.shields.io/badge/Neo4j-proposto-lightgrey?logo=neo4j&logoColor=white)
 <br />
 [![Migrations](https://github.com/InventraTech/inventra-database-2/actions/workflows/migrations.yml/badge.svg)](https://github.com/InventraTech/inventra-database-2/actions/workflows/migrations.yml)
 [![mongo](https://github.com/InventraTech/inventra-database-2/actions/workflows/mongo.yml/badge.svg)](https://github.com/InventraTech/inventra-database-2/actions/workflows/mongo.yml)
@@ -21,7 +21,7 @@ Bancos de dados do projeto interdisciplinar **Inventra**. Este repositório é a
 - **PostgreSQL:** tabelas, regras de negócio em SQL, auditoria automática, camada de consulta e Data Mart para BI.
 - **MongoDB:** o contrato das coleções da IA.
 - **Redis:** o catálogo de chaves e os comandos de cada operação da API.
-- **Neo4j:** o levantamento de uso e a estrutura prevista.
+- **Neo4j:** o levantamento de uso e a proposta de projeção de cobertura de fornecedores.
 
 Para navegar por tudo isso, abra o **[Database Workspace](database-workspace.html)**.
 
@@ -66,7 +66,7 @@ O `build.py` só reescreve o bloco de dados do HTML; a interface é o próprio a
 | **PostgreSQL 16** | [`postgre/`](postgre) | API Spring | Fonte da verdade do cadastro, estoque, requisições, inventário, alertas e auditoria | [`migrations.yml`](.github/workflows/migrations.yml) |
 | **MongoDB 8** | [`mongo/`](mongo) | IA (IAI) | Banco `dbIAI`: conversas do chat e métricas de custo/latência por requisição | [`mongo.yml`](.github/workflows/mongo.yml) |
 | **Redis 7** | [`redis/`](redis) | API Spring | Refresh tokens, redefinição de senha, pedidos de acesso, fila de cadastro e ranking de validade | [`redis.yml`](.github/workflows/redis.yml) |
-| **Neo4j** | [`neo4j/`](neo4j) | nenhum serviço | Ainda não usado | sem CI |
+| **Neo4j** | [`neo4j/`](neo4j) | nenhum serviço | Proposta: cobertura de fornecedores por requisição (ainda não usado) | sem CI |
 
 | Serviço | Repositório | Bancos |
 |---------|-------------|--------|
@@ -273,7 +273,9 @@ Para inspecionar, use `SCAN` com padrão (`redis-cli --scan --pattern 'kar:kitch
 
 ## Neo4j
 
-**Não usado.** Nenhum serviço conecta ao Neo4j hoje: o repositório da API cita Neo4j no nome, mas não tem dependência, configuração nem código. O levantamento e a estrutura prevista para quando o grafo entrar (constraints, índices, migrations `.cypher`, seed e testes) estão em [`neo4j/README.md`](neo4j/README.md).
+**Não usado.** Nenhum serviço conecta ao Neo4j hoje: o repositório da API cita Neo4j no nome, mas não tem dependência, configuração nem código. O levantamento de uso e a estrutura prevista estão em [`neo4j/README.md`](neo4j/README.md).
+
+Há uma **proposta** de projeção em grafo para a cobertura de fornecedores por requisição (`Requisition → Product ← Supplier`), com constraints, índices, consultas Cypher e seed em [`neo4j/`](neo4j) e a especificação em [`COBERTURA_FORNECEDORES.md`](neo4j/docs/COBERTURA_FORNECEDORES.md). Os scripts foram validados num Neo4j 5 descartável, mas não rodam no CI.
 
 ## Documentação
 
@@ -291,6 +293,7 @@ Para inspecionar, use `SCAN` com padrão (`redis-cli --scan --pattern 'kar:kitch
 | MongoDB | [`MONGO_MODEL.md`](mongo/docs/MONGO_MODEL.md) | Coleções, contrato `$jsonSchema`, índices, validação, retenção e esteira |
 | Redis | [`KEYSPACE.md`](redis/docs/KEYSPACE.md) | Cada chave (tipo, campos, TTL, dono), comandos por operação e operação do serviço |
 | Neo4j | [`README.md`](neo4j/README.md) | Levantamento (não usado) e estrutura prevista |
+| Neo4j | [`COBERTURA_FORNECEDORES.md`](neo4j/docs/COBERTURA_FORNECEDORES.md) | Proposta de projeção em grafo: modelo, Cypher, contrato REST, testes e operação |
 
 ## Estrutura do repositório
 
@@ -321,7 +324,7 @@ redis/
 ├── tests/           # keyspace, redis.conf e scripts validados num redis:7
 ├── docs/            # KEYSPACE, fila de produtos e ranking
 └── README.md         # mapa das entregas INV2-24/25/26
-neo4j/               # README com o levantamento; ainda sem uso
+neo4j/               # levantamento + proposta de cobertura de fornecedores: constraints/, indexes/, queries/, seeds/ e docs/ (ainda sem uso)
 scripts/workspace/   # build.py + introspect.sql: geram os dados do database-workspace.html
 database-workspace.html  # documentação navegável de todos os bancos
 .github/workflows/   # CI: PostgreSQL, MongoDB e contrato/scripts Redis
