@@ -12,7 +12,7 @@ Visão de como o repositório é organizado e por que, mais as decisões de desi
 
 ```mermaid
 flowchart LR
-    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V018"]
+    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V019"]
     M -->|psql / CI| DB[("PostgreSQL")]
     M -->|cópia byte a byte| API["ms-inventra-api<br/>Flyway"]
     R["rollback/<br/>drop_*.sql"] -.->|reverte| DB
@@ -40,6 +40,7 @@ flowchart LR
 | `V016__pre_list.sql` | Pré-lista de compra (`tb_pre_list` e `tb_pre_list_item`): data da lista e itens com produto, fornecedor e quantidade |
 | `V017__pre_list_id_source.sql` | `tb_pre_list.id_source` (único, opcional): id da pré-lista no banco do 1º ano, para o RPA não importar a mesma lista duas vezes |
 | `V018__pre_list_kitchen.sql` | `tb_pre_list.id_kitchen` (FK para `tb_kitchen`, opcional, com índice): cozinha da pré-lista, para filtrar as listas por cozinha |
+| `V019__category_hierarchy.sql` | Hierarquia de categorias (`tb_category.id_parent_category`, autorrelacionamento) com CTE recursiva: trava anti-ciclo `trg_category_no_cycle`, `fn_category_descendants`, `vw_category_tree`, `vw_category_stock_rollup` e `dim_category` (snowflake) |
 | `rollback/drop_everything.sql` | Reversão completa |
 
 As pastas de dicionário não têm numeração porque não representam sequência; a ordem de execução é definida só por `migrations/`.
@@ -47,7 +48,7 @@ As pastas de dicionário não têm numeração porque não representam sequênci
 ## Convenções
 
 - **Fonte da verdade:** este repositório é o dono do schema. Toda mudança nasce aqui, na pasta de dicionário correspondente **e** em `migrations`.
-- **Integração com a API:** `ms-inventra-api` apenas copia `V001` a `V018` byte a byte para `src/main/resources/db/migration` e o Flyway aplica. Nunca se edita migration direto na API.
+- **Integração com a API:** `ms-inventra-api` apenas copia `V001` a `V019` byte a byte para `src/main/resources/db/migration` e o Flyway aplica. Nunca se edita migration direto na API.
 - **Imutabilidade:** migrations são idempotentes e numeradas em sequência (`V006`, `V007`…). Uma migration já aplicada em algum banco não deve ser alterada; mudanças novas entram em uma nova versão.
 - **Mensagens em português:** os `RAISE EXCEPTION` das functions e procedures estão em português de propósito, porque a API os repassa ao cliente no `detail` das respostas 409.
 - **Job diário:** `sp_expire_batches()` marca lotes vencidos como `EXPIRED` e gera os alertas correspondentes. É chamada diariamente pelo `BatchExpirationJob` da API. `sp_alert_expiring_batches(p_days)` avisa **antes** de vencer e deve ser chamada pelo mesmo job.
@@ -59,12 +60,12 @@ As pastas de dicionário não têm numeração porque não representam sequênci
 
 `tests/check_migrations.sh` roda no GitHub Actions (`.github/workflows/migrations.yml`, PostgreSQL 16) e cobre quatro passos:
 
-1. aplica `V001`…`V018` em banco limpo;
+1. aplica `V001`…`V019` em banco limpo;
 2. reaplica tudo (prova de idempotência);
 3. executa `rollback/drop_everything.sql`;
 4. reaplica do zero após o rollback.
 
-Depois, `tests/check_normalization_integrity.sql` confere as triggers que protegem as redundâncias controladas do modelo ([`NORMALIZATION.md`](normalization/NORMALIZATION.md)), numa transação desfeita no fim, `tests/check_daily_access.sql` faz o mesmo com o registro de acessos e as views de DAU e `tests/check_ui_click_counter.sql` com o contador de cliques ([`MONITORING.md`](MONITORING.md)). Em seguida, `tests/check_backup_restore.sh` desfaz operações pela auditoria, gera um backup com `backup/backup.sh`, restaura num banco novo com `backup/restore.sh` e compara a contagem de linhas de cada tabela. Detalhes em [`BACKUP_AND_RECOVERY.md`](BACKUP_AND_RECOVERY.md).
+Depois, `tests/check_normalization_integrity.sql` confere as triggers que protegem as redundâncias controladas do modelo ([`NORMALIZATION.md`](normalization/NORMALIZATION.md)), numa transação desfeita no fim, `tests/check_daily_access.sql` faz o mesmo com o registro de acessos e as views de DAU, `tests/check_ui_click_counter.sql` com o contador de cliques ([`MONITORING.md`](MONITORING.md)) e `tests/check_category_hierarchy.sql` com a hierarquia de categorias (árvore, subárvore, soma pela árvore e as travas contra ciclo). Em seguida, `tests/check_backup_restore.sh` desfaz operações pela auditoria, gera um backup com `backup/backup.sh`, restaura num banco novo com `backup/restore.sh` e compara a contagem de linhas de cada tabela. Detalhes em [`BACKUP_AND_RECOVERY.md`](BACKUP_AND_RECOVERY.md).
 
 Por fim, `tests/check_dictionary_sync.sh` garante que o dicionário e as migrations não divergem. Ele monta um banco só com `migrations/V*.sql` e outro só com os arquivos do dicionário, e compara os dois com `tests/schema_fingerprint.sql`. A comparação cobre colunas, constraints, índices, views, rotinas, triggers, herança e o conteúdo do catálogo de dados, e não depende da ordem física das colunas. A lista `DICTIONARY` do script é a **ordem oficial de execução do dicionário**; arquivo novo que ficar fora dela faz o teste falhar.
 
@@ -86,6 +87,28 @@ flowchart TB
     B --> A[tb_log_alert]
 ```
 
-**Por que herança e não CTE recursiva:** as duas técnicas resolvem problemas diferentes. CTE recursiva serve para navegar uma relação hierárquica *dentro da mesma tabela*, onde uma linha referencia outra linha da própria tabela (ex: categoria com subcategoria, organograma). As tabelas de log não são hierárquicas: são 7 entidades **irmãs**, sem relação de pai/filho entre si, que só compartilham o mesmo formato de colunas de auditoria. Isso é exatamente o que herança resolve: reaproveitar uma estrutura comum sem duplicar colunas, mantendo a consulta consolidada via `SELECT * FROM tb_log_base`, que já retorna as linhas de todas as filhas.
+**Por que herança aqui e não CTE recursiva:** as duas técnicas resolvem problemas diferentes. CTE recursiva serve para navegar uma relação hierárquica *dentro da mesma tabela*, onde uma linha referencia outra linha da própria tabela (é o caso das categorias, abaixo). As tabelas de log não são hierárquicas: são 7 entidades **irmãs**, sem relação de pai/filho entre si, que só compartilham o mesmo formato de colunas de auditoria. Isso é exatamente o que herança resolve: reaproveitar uma estrutura comum sem duplicar colunas, mantendo a consulta consolidada via `SELECT * FROM tb_log_base`, que já retorna as linhas de todas as filhas.
 
 **Verificação:** `INSERT`/`UPDATE`/`DELETE` numa tabela principal (ex: `tb_product`) dispara a trigger de auditoria, que grava na filha correspondente (`tb_log_product`). A linha aparece tanto na consulta pela filha quanto pela base (`tb_log_base`), sem `UNION` manual.
+
+## CTE recursiva na hierarquia de categorias
+
+Desde a `V019`, `tb_category` tem categoria-mãe (`id_parent_category`, FK para a própria tabela). Nula quer dizer raiz. O produto pode apontar para qualquer nível da árvore.
+
+```mermaid
+flowchart TB
+    R["Carnes Bovinas<br/>(raiz, nível 1)"] --> I["Carnes Bovinas - Picanha<br/>(nível 2)"]
+    I --> V1["... (Embalagem Institucional)<br/>(nível 3)"]
+    I --> V2["... (Embalagem Fracionada)<br/>(nível 3)"]
+```
+
+Quatro peças percorrem a árvore com `WITH RECURSIVE`:
+
+| Objeto | Para que serve |
+|--------|----------------|
+| `fn_check_category_cycle()` / `trg_category_no_cycle` | `BEFORE INSERT OR UPDATE OF id_parent_category`: sobe pelos ancestrais da nova mãe e recusa a troca se a própria categoria aparecer (ciclo). Usa `UNION`, que termina mesmo diante de um ciclo antigo |
+| `fn_category_descendants(id)` | A categoria e todas as subcategorias, com `relative_level` (0 = a própria). Ex.: produtos de um grupo inteiro: `WHERE id_category IN (SELECT id_descendant FROM fn_category_descendants(1))` |
+| `vw_category_tree` | Árvore inteira a partir das raízes: `category_level`, `category_path` (`Raiz > Filha > Neta`), `path_ids`, raiz e `is_leaf`. `path_ids` também barra a recursão se houver ciclo |
+| `vw_category_stock_rollup` | Estoque ativo da categoria somado com o das subcategorias, com `RANK()` e participação (%) dentro do mesmo nível (detalhes em [`VIEWS_AND_DATAMART.md`](VIEWS_AND_DATAMART.md)) |
+
+As travas de integridade são três: `ck_category_not_self_parent` (a categoria não pode ser mãe de si mesma), o trigger anti-ciclo e `ON DELETE RESTRICT` na FK (não se apaga categoria que tem filhas). `idx_category_parent` atende o passo recursivo ("filhas de X"); a medição está em [`EXPLAIN_ANALYZE.md`](query_optimization/EXPLAIN_ANALYZE.md).

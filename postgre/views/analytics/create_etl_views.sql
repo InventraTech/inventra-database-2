@@ -96,3 +96,53 @@ FROM batch_risk br
 JOIN product_next_expiration pne
     ON pne.id_product = br.id_product AND pne.id_kitchen = br.id_kitchen
 ORDER BY br.id_kitchen, urgency_rank, br.expiration_date;
+
+-- Estoque ativo de cada categoria somado com o das subcategorias (subtree), com ranking
+-- e participação dentro do mesmo nível da árvore.
+CREATE VIEW vw_category_stock_rollup AS
+WITH direct_stock AS (
+    SELECT
+        p.id_category,
+        SUM(sb.current_quantity) AS quantity,
+        SUM(sb.current_quantity * COALESCE(sb.unit_price, 0)) AS stock_value
+    FROM tb_stock_batch sb
+    JOIN tb_product p ON p.id_product = sb.id_product
+    WHERE sb.status = 'ACTIVE'
+      AND p.id_category IS NOT NULL
+    GROUP BY p.id_category
+),
+subtree_stock AS (
+    SELECT
+        a.id_category,
+        COUNT(*) - 1 AS subcategory_count,
+        COALESCE(SUM(ds.quantity), 0) AS subtree_quantity,
+        COALESCE(SUM(ds.stock_value), 0) AS subtree_value
+    FROM vw_category_tree a
+    JOIN vw_category_tree d ON a.id_category = ANY(d.path_ids)
+    LEFT JOIN direct_stock ds ON ds.id_category = d.id_category
+    GROUP BY a.id_category
+)
+SELECT
+    t.id_category,
+    t.category_name,
+    t.id_parent_category,
+    t.category_level,
+    t.category_path,
+    t.is_leaf,
+    ss.subcategory_count,
+    COALESCE(ds.quantity, 0) AS direct_quantity,
+    COALESCE(ds.stock_value, 0) AS direct_value,
+    ss.subtree_quantity,
+    ss.subtree_value,
+    RANK() OVER (
+        PARTITION BY t.category_level
+        ORDER BY ss.subtree_value DESC
+    ) AS value_rank_in_level,
+    ROUND(
+        100 * ss.subtree_value
+        / NULLIF(SUM(ss.subtree_value) OVER (PARTITION BY t.category_level), 0),
+        2
+    ) AS share_of_level_pct
+FROM vw_category_tree t
+JOIN subtree_stock ss ON ss.id_category = t.id_category
+LEFT JOIN direct_stock ds ON ds.id_category = t.id_category;

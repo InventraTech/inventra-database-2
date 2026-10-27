@@ -2,6 +2,9 @@
 -- ROLLBACK TRIGGERS
 -- ---------------------------------------------------
 
+DROP TRIGGER IF EXISTS trg_category_no_cycle
+ON tb_category;
+
 DROP TRIGGER IF EXISTS trg_alert_batch_consistency
 ON tb_alert;
 

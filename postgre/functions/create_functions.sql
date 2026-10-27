@@ -242,3 +242,63 @@ BEGIN
 
 END;
 $$;
+
+-- Sobe pelos ancestrais da nova mãe: se a própria categoria aparece, a troca fecharia um ciclo.
+-- UNION (e não UNION ALL) para a recursão terminar mesmo se houver um ciclo antigo no banco.
+CREATE FUNCTION fn_check_category_cycle()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS
+$$
+BEGIN
+
+    IF NEW.id_parent_category IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF EXISTS (
+        WITH RECURSIVE ancestors AS (
+            SELECT c.id_category, c.id_parent_category
+            FROM tb_category c
+            WHERE c.id_category = NEW.id_parent_category
+
+            UNION
+
+            SELECT c.id_category, c.id_parent_category
+            FROM tb_category c
+            JOIN ancestors a ON c.id_category = a.id_parent_category
+        )
+        SELECT 1 FROM ancestors WHERE id_category = NEW.id_category
+    ) THEN
+        RAISE EXCEPTION
+            'A categoria % não pode ficar abaixo da categoria %: isso criaria um ciclo na hierarquia.',
+            NEW.id_category, NEW.id_parent_category;
+    END IF;
+
+    RETURN NEW;
+
+END;
+$$;
+
+-- A categoria e todas as subcategorias abaixo dela (relative_level 0 = a própria).
+-- Ex.: produtos de Hortifrúti, com subcategorias:
+--   SELECT * FROM tb_product WHERE id_category IN (SELECT id_descendant FROM fn_category_descendants(1));
+CREATE FUNCTION fn_category_descendants(p_id_category INTEGER)
+RETURNS TABLE (id_descendant INTEGER, relative_level INTEGER)
+LANGUAGE sql
+STABLE
+AS
+$$
+    WITH RECURSIVE subtree AS (
+        SELECT c.id_category, 0 AS lvl
+        FROM tb_category c
+        WHERE c.id_category = p_id_category
+
+        UNION ALL
+
+        SELECT c.id_category, s.lvl + 1
+        FROM tb_category c
+        JOIN subtree s ON c.id_parent_category = s.id_category
+    )
+    SELECT id_category, lvl FROM subtree;
+$$;

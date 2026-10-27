@@ -15,3 +15,5 @@ DROP VIEW IF EXISTS dim_supplier;
 DROP VIEW IF EXISTS dim_kitchen;
 
 DROP VIEW IF EXISTS dim_product;
+
+DROP VIEW IF EXISTS dim_category;

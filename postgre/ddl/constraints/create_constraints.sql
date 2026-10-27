@@ -17,6 +17,11 @@ ADD CONSTRAINT fk_product_category
 FOREIGN KEY (id_category) REFERENCES tb_category (id_category)
 ON UPDATE NO ACTION ON DELETE NO ACTION;
 
+ALTER TABLE tb_category
+ADD CONSTRAINT fk_category_parent
+FOREIGN KEY (id_parent_category) REFERENCES tb_category (id_category)
+ON UPDATE NO ACTION ON DELETE RESTRICT;
+
 ALTER TABLE tb_product
 ADD CONSTRAINT fk_product_unit
 FOREIGN KEY (id_unit) REFERENCES tb_measurement_unit (id_unit)
@@ -196,6 +201,10 @@ CHECK (status IN ('OPEN', 'CLOSED', 'CANCELLED'));
 ALTER TABLE tb_alert
 ADD CONSTRAINT ck_alert_severity 
 CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL'));
+
+ALTER TABLE tb_category
+ADD CONSTRAINT ck_category_not_self_parent
+CHECK (id_parent_category <> id_category);
 
 ALTER TABLE tb_kitchen
 ADD CONSTRAINT ck_kitchen_state

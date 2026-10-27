@@ -12,6 +12,8 @@ DROP INDEX IF EXISTS idx_user_active;
 
 DROP INDEX IF EXISTS idx_product_category;
 
+DROP INDEX IF EXISTS idx_category_parent;
+
 DROP INDEX IF EXISTS idx_product_unit;
 
 DROP INDEX IF EXISTS idx_product_barcode;
