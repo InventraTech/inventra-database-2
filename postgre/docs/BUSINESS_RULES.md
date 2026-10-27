@@ -1,6 +1,6 @@
 # Regras de Negócio no Banco
 
-Functions, procedures e triggers que implementam as regras do Inventra direto no PostgreSQL. Definidos em `migrations/V002__business_rules.sql` (negócio) e `migrations/V003__audit_logs.sql` (auditoria), com as alterações de `V007` (movimentações), `V008` (alertas) e `V009` (requisições).
+Functions, procedures e triggers que implementam as regras do Inventra direto no PostgreSQL. Definidos em `migrations/V002__business_rules.sql` (negócio) e `migrations/V003__audit_logs.sql` (auditoria), com as alterações de `V007` (movimentações), `V008` (alertas), `V009` (requisições) e `V019` (hierarquia de categorias).
 
 ## Functions de negócio
 
@@ -15,6 +15,9 @@ Arquivo: `functions/create_functions.sql`. São regras automáticas, disparadas 
 | `fn_requisition_approval` | `trg_requisition_approval` | Preenche `approved_at` quando o status muda para `APPROVED` |
 | `fn_stock_alert` | `trg_stock_alert` | Cria alerta `STOCK` (`HIGH`) quando a soma dos lotes ativos e não vencidos fica **abaixo** do mínimo cadastrado; não duplica se já há um alerta `STOCK` aberto |
 | `fn_expiration_alert` | `trg_expiration_alert` | Cria alerta quando um lote já passou da validade; não duplica se já há um alerta `EXPIRATION` aberto |
+| `fn_check_category_cycle` | `trg_category_no_cycle` | Recusa a categoria-mãe que criaria um ciclo na hierarquia: sobe pelos ancestrais da nova mãe com CTE recursiva e barra se a própria categoria aparecer (`V019`) |
+
+`fn_category_descendants(p_id_category)` é a exceção: não é de trigger, é chamada direto. Devolve a categoria e todas as subcategorias abaixo dela (CTE recursiva), para filtrar produtos de um grupo inteiro.
 
 **Alerta aberto** é o que ninguém leu ainda: `is_read = false` (leitura antiga, do alerta inteiro) e nenhuma linha em `tb_alert_read` (leitura por pessoa).
 
@@ -74,6 +77,7 @@ Arquivo: `triggers/create_trg.sql`.
 | `trg_requisition_approval` | `tb_requisition` | BEFORE UPDATE de `status` | `fn_requisition_approval` |
 | `trg_stock_alert` | `tb_stock_batch` | AFTER INSERT/UPDATE de `current_quantity` | `fn_stock_alert` |
 | `trg_expiration_alert` | `tb_stock_batch` | AFTER INSERT/UPDATE de `expiration_date` | `fn_expiration_alert` |
+| `trg_category_no_cycle` | `tb_category` | BEFORE INSERT/UPDATE de `id_parent_category` | `fn_check_category_cycle` |
 
 ## Auditoria
 

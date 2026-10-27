@@ -1,5 +1,5 @@
 -- =====================================================
--- FULL TEARDOWN — reverses V001 through V018
+-- FULL TEARDOWN — reverses V001 through V019
 -- =====================================================
 -- WARNING: destructive and irreversible. Drops every table
 -- (and all data in them), view, function, procedure, trigger,
@@ -86,6 +86,8 @@ DROP TABLE IF EXISTS tb_catalog_access_level;
 -- ETL / ANALYTICS VIEWS
 -- ---------------------------------------------------
 
+DROP VIEW IF EXISTS vw_category_stock_rollup;
+
 DROP VIEW IF EXISTS vw_product_expiration_urgency;
 
 DROP VIEW IF EXISTS vw_category_monthly_requisition_trend;
@@ -109,6 +111,8 @@ DROP VIEW IF EXISTS dim_supplier;
 DROP VIEW IF EXISTS dim_kitchen;
 
 DROP VIEW IF EXISTS dim_product;
+
+DROP VIEW IF EXISTS dim_category;
 
 -- ---------------------------------------------------
 -- VIEWS
@@ -148,6 +152,8 @@ DROP VIEW IF EXISTS vw_kitchen_daily_stock_movement;
 
 DROP VIEW IF EXISTS vw_inventory_count_divergence;
 
+DROP VIEW IF EXISTS vw_category_tree;
+
 -- ---------------------------------------------------
 -- LOG TRIGGERS
 -- ---------------------------------------------------
@@ -176,6 +182,9 @@ ON tb_alert;
 -- ---------------------------------------------------
 -- BUSINESS TRIGGERS
 -- ---------------------------------------------------
+
+DROP TRIGGER IF EXISTS trg_category_no_cycle
+ON tb_category;
 
 DROP TRIGGER IF EXISTS trg_alert_batch_consistency
 ON tb_alert;
@@ -219,6 +228,10 @@ DROP FUNCTION IF EXISTS fn_log_alert();
 -- ---------------------------------------------------
 -- BUSINESS FUNCTIONS
 -- ---------------------------------------------------
+
+DROP FUNCTION IF EXISTS fn_category_descendants(INTEGER);
+
+DROP FUNCTION IF EXISTS fn_check_category_cycle();
 
 DROP FUNCTION IF EXISTS fn_alert_batch_consistency();
 
@@ -272,6 +285,12 @@ DROP CONSTRAINT IF EXISTS fk_user_kitchen;
 
 ALTER TABLE tb_product
 DROP CONSTRAINT IF EXISTS fk_product_category;
+
+ALTER TABLE IF EXISTS tb_category
+DROP CONSTRAINT IF EXISTS fk_category_parent;
+
+ALTER TABLE IF EXISTS tb_category
+DROP CONSTRAINT IF EXISTS ck_category_not_self_parent;
 
 ALTER TABLE tb_product
 DROP CONSTRAINT IF EXISTS fk_product_unit;
@@ -413,6 +432,8 @@ DROP INDEX IF EXISTS idx_user_kitchen;
 DROP INDEX IF EXISTS idx_user_email;
 DROP INDEX IF EXISTS idx_user_active;
 DROP INDEX IF EXISTS idx_product_category;
+
+DROP INDEX IF EXISTS idx_category_parent;
 DROP INDEX IF EXISTS idx_product_unit;
 DROP INDEX IF EXISTS idx_product_barcode;
 DROP INDEX IF EXISTS idx_product_active;

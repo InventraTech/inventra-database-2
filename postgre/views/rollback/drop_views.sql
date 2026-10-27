@@ -35,3 +35,5 @@ DROP VIEW IF EXISTS vw_product_requisition_ranking;
 DROP VIEW IF EXISTS vw_kitchen_daily_stock_movement;
 
 DROP VIEW IF EXISTS vw_inventory_count_divergence;
+
+DROP VIEW IF EXISTS vw_category_tree;

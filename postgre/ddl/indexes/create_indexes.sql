@@ -17,7 +17,10 @@ ON tb_user (active);
 CREATE INDEX idx_product_category 
 ON tb_product (id_category);
 
-CREATE INDEX idx_product_unit 
+CREATE INDEX idx_category_parent
+ON tb_category (id_parent_category);
+
+CREATE INDEX idx_product_unit
 ON tb_product (id_unit);
 
 CREATE INDEX idx_product_barcode

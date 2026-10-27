@@ -441,3 +441,50 @@ SELECT
 FROM movement m
 LEFT JOIN tb_kitchen k ON k.id_kitchen = m.id_kitchen
 GROUP BY m.id_kitchen, k.name, m.reference_month;
+
+-- Árvore de categorias a partir das raízes: nível, caminho legível e ids do caminho (path_ids).
+-- path_ids também barra a recursão se um ciclo existir.
+CREATE VIEW vw_category_tree AS
+WITH RECURSIVE tree AS (
+    SELECT
+        c.id_category,
+        c.name,
+        c.id_parent_category,
+        c.id_category AS id_root_category,
+        1 AS category_level,
+        c.name::TEXT AS category_path,
+        ARRAY[c.id_category] AS path_ids
+    FROM tb_category c
+    WHERE c.id_parent_category IS NULL
+
+    UNION ALL
+
+    SELECT
+        c.id_category,
+        c.name,
+        c.id_parent_category,
+        t.id_root_category,
+        t.category_level + 1,
+        t.category_path || ' > ' || c.name,
+        t.path_ids || c.id_category
+    FROM tb_category c
+    JOIN tree t ON c.id_parent_category = t.id_category
+    WHERE NOT c.id_category = ANY(t.path_ids)
+)
+SELECT
+    t.id_category,
+    t.name AS category_name,
+    t.id_parent_category,
+    parent.name AS parent_category_name,
+    t.id_root_category,
+    root.name AS root_category_name,
+    t.category_level,
+    t.category_path,
+    t.path_ids,
+    NOT EXISTS (
+        SELECT 1 FROM tb_category child
+        WHERE child.id_parent_category = t.id_category
+    ) AS is_leaf
+FROM tree t
+JOIN tb_category root ON root.id_category = t.id_root_category
+LEFT JOIN tb_category parent ON parent.id_category = t.id_parent_category;

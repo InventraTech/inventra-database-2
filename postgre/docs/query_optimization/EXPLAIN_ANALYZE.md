@@ -353,6 +353,69 @@ disco e deixaria escritas um pouco mais lentas à toa. **Ação:** o índice
 
 ---
 
+## Consulta 5 — Subárvore de uma categoria (CTE recursiva)
+
+Consulta medida: todas as subcategorias de uma categoria raiz, o mesmo corpo de
+`fn_category_descendants` (`V019`). Banco local PostgreSQL 16 com o seed
+completo (5.026 categorias em 3 níveis), após `ANALYZE tb_category`.
+
+```sql
+WITH RECURSIVE subtree AS (
+    SELECT c.id_category, 0 AS lvl FROM tb_category c WHERE c.id_category = 1
+    UNION ALL
+    SELECT c.id_category, s.lvl + 1
+    FROM tb_category c
+    JOIN subtree s ON c.id_parent_category = s.id_category
+)
+SELECT * FROM subtree;
+```
+
+O passo recursivo pergunta "quem são as filhas de X?" a cada nível, ou seja,
+filtra por `id_parent_category`.
+
+### Antes (sem índice em id_parent_category)
+
+```
+Recursive Union (actual time=0.007..1.487 rows=61 loops=1)
+  ->  Index Only Scan using tb_category_pkey on tb_category c (actual time=0.007..0.007 rows=1 loops=1)
+  ->  Hash Join (actual time=0.305..0.490 rows=20 loops=3)
+        ->  Seq Scan on tb_category c_1 (actual time=0.001..0.202 rows=5026 loops=3)
+Execution Time: 1.512 ms
+```
+
+Cada nível da recursão lê a tabela inteira (5.026 linhas × 3 níveis).
+
+### Índice criado
+
+```sql
+CREATE INDEX idx_category_parent ON tb_category (id_parent_category);
+```
+
+### Depois (com índice em id_parent_category)
+
+```
+Recursive Union (actual time=0.006..0.134 rows=61 loops=1)
+  ->  Index Only Scan using tb_category_pkey on tb_category c (actual time=0.005..0.005 rows=1 loops=1)
+  ->  Nested Loop
+        ->  WorkTable Scan on subtree s (actual time=0.000..0.001 rows=20 loops=3)
+        ->  Index Scan using idx_category_parent on tb_category c_1 (actual time=0.002..0.002 rows=1 loops=61)
+              Index Cond: (id_parent_category = s.id_category)
+Execution Time: 0.170 ms
+```
+
+| | Antes | Depois |
+|---|---|---|
+| Acesso às filhas | `Seq Scan` (5.026 linhas, 3x) | `Index Scan` em `idx_category_parent` |
+| Tempo de execução | 1,512 ms | 0,170 ms |
+| Ganho | — | **~8,9x mais rápido** |
+
+O ganho cresce com a profundidade e com o tamanho da tabela: sem o índice,
+cada nível a mais é outra varredura completa. O mesmo índice atende a trava
+anti-ciclo (`fn_check_category_cycle`, que sobe pela PK) só no sentido
+inverso, então ela já usava `tb_category_pkey`.
+
+---
+
 ## Onde os índices ficam no projeto
 
 | Índice | Dicionário | Migration |
@@ -361,7 +424,8 @@ disco e deixaria escritas um pouco mais lentas à toa. **Ação:** o índice
 | `idx_requisition_status_created_at` (`status`, `created_at DESC`) | `ddl/indexes/create_indexes.sql` | `migrations/V001__init_database.sql` |
 | `idx_productsupplier_product_price` (`id_product`, `reference_price`) | `ddl/indexes/create_indexes.sql` | `migrations/V001__init_database.sql` |
 | `idx_batch_kitchen_status_expiration` (`id_kitchen`, `status`, `expiration_date`) | `ddl/indexes/create_indexes.sql` | `migrations/V001__init_database.sql` |
+| `idx_category_parent` (`id_parent_category`) | `ddl/indexes/create_indexes.sql` | `migrations/V019__category_hierarchy.sql` |
 
 Rollback isolado em `ddl/indexes/rollback/drop_indexes.sql` e
-`ddl/logs/rollback/drop_log_indexes.sql`; todos os quatro também estão no
+`ddl/logs/rollback/drop_log_indexes.sql`; todos os cinco também estão no
 `migrations/rollback/drop_everything.sql`.

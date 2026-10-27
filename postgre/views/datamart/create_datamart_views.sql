@@ -1,6 +1,20 @@
 -- ---------------------------------------------------
--- DATA MART VIEWS — STAR SCHEMA
+-- DATA MART VIEWS — STAR SCHEMA (+ SNOWFLAKE NA CATEGORIA)
 -- ---------------------------------------------------
+
+-- Dimensão da categoria normalizada à parte (snowflake): dim_product.category_name -> dim_category
+-- (nome UNIQUE em tb_category).
+CREATE VIEW dim_category AS
+SELECT
+    t.id_category,
+    t.category_name,
+    t.id_parent_category,
+    t.parent_category_name,
+    t.root_category_name,
+    t.category_level,
+    t.category_path,
+    t.is_leaf
+FROM vw_category_tree t;
 
 CREATE VIEW dim_product AS
 SELECT

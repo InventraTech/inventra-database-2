@@ -41,7 +41,7 @@ Em todas as tabelas abaixo, a única DF é **chave → demais colunas**, exceto 
 |--------|----|----|-------------------------|------------|
 | `tb_profile` | `id_profile` | `access_type` | `id_profile → access_type, description` | |
 | `tb_kitchen` | `id_kitchen` | `code` | `id_kitchen → name, code, address, city, state, latitude, longitude, accepting_requests, active, created_at` | `city ↛ state` (há cidades homônimas em UFs diferentes), por isso a UF fica na própria cozinha |
-| `tb_category` | `id_category` | `name` | `id_category → name, description` | |
+| `tb_category` | `id_category` | `name` | `id_category → name, description, id_parent_category` | A mãe é só uma FK para a própria tabela: nível, caminho e raiz **não** são gravados, e sim calculados por CTE recursiva em `vw_category_tree` |
 | `tb_measurement_unit` | `id_unit` | `symbol` | `id_unit → symbol, description` | |
 | `tb_product` | `id_product` | `barcode` (quando informado) | `id_product → name, brand, id_category, id_unit, barcode, photo_url, active, created_at` | `brand ↛ id_category`: uma marca pode ter produtos em categorias diferentes, então a marca não vira tabela com categoria própria |
 | `tb_supplier` | `id_supplier` | `cnpj` | `id_supplier → legal_name, cnpj, email, whatsapp, rating, active, created_at` | |
@@ -224,6 +224,7 @@ Todos os relacionamentos usam `FOREIGN KEY` declarada no banco. "Obrigatório" s
 | `tb_profile` | `tb_user` | 1:N | `tb_user.id_profile` | Obrigatória |
 | `tb_kitchen` | `tb_user` | 1:N | `tb_user.id_kitchen` | Opcional (usuário ainda sem cozinha) |
 | `tb_category` | `tb_product` | 1:N | `tb_product.id_category` | Opcional |
+| `tb_category` (mãe) | `tb_category` (filhas) | 1:N (autorrelacionamento) | `tb_category.id_parent_category` | Opcional (nula = raiz); sem ciclo (`trg_category_no_cycle`) e `ON DELETE RESTRICT` |
 | `tb_measurement_unit` | `tb_product` | 1:N | `tb_product.id_unit` | Obrigatória |
 | `tb_product` ↔ `tb_supplier` | via `tb_product_supplier` | **N:N** | `id_product`, `id_supplier` | Obrigatória nas duas pontas |
 | `tb_product` ↔ `tb_kitchen` | via `tb_product_kitchen_parameter` | **N:N** | `id_product`, `id_kitchen` | Obrigatória nas duas pontas |

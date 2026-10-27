@@ -42,11 +42,15 @@ flowchart LR
     dd --- fic
     ds[dim_supplier] --- fsm
     ds --- fri
+    dc[dim_category] -.-|category_name| dp
 ```
+
+Na categoria o modelo vira **snowflake**: `dim_product` aponta para `dim_category` (linha pontilhada), que traz a hierarquia da `V019` (mãe, raiz, nível e caminho, calculados por CTE recursiva em `vw_category_tree`). A ligação é por `category_name`, único em `tb_category`. `dim_product` não ganhou `id_category` porque a `V004` a recria com `CREATE OR REPLACE VIEW`, que não aceita coluna a menos ([convenção](ARCHITECTURE.md#convenções)). Produto sem categoria aparece como `UNCATEGORIZED` e não casa com nenhuma linha de `dim_category`.
 
 | Tipo | View | Grão |
 |------|------|------|
 | Dimensão | `dim_product` | uma linha por produto |
+| Dimensão (snowflake) | `dim_category` | uma linha por categoria, com mãe, raiz, `category_level`, `category_path` e `is_leaf` |
 | Dimensão | `dim_kitchen` | uma linha por cozinha |
 | Dimensão | `dim_supplier` | uma linha por fornecedor |
 | Dimensão | `dim_date` | uma linha por dia (2023–2030) |
@@ -54,7 +58,7 @@ flowchart LR
 | Fato | `fact_requisition_item` | uma linha por item de requisição |
 | Fato | `fact_inventory_count` | uma linha por contagem de inventário |
 
-Uma ferramenta de BI (Power BI, Metabase etc.) conectada nessas 7 views monta o relacionamento fato↔dimensão sozinha, pelas colunas de chave (`id_product`, `id_kitchen`, `date_key`).
+Uma ferramenta de BI (Power BI, Metabase etc.) conectada nessas 8 views monta o relacionamento fato↔dimensão sozinha, pelas colunas de chave (`id_product`, `id_kitchen`, `date_key`); `dim_product`↔`dim_category` liga por `category_name`.
 
 ## Views analíticas (CTEs + Window Functions)
 
@@ -65,6 +69,9 @@ Arquivo: `views/analytics/create_etl_views.sql`. CTEs organizam os cálculos e W
 | `vw_category_stock_balance` | Estoque atual vs. mínimo por categoria (2 CTEs), com ranking de risco (`RANK()`) da categoria mais apertada para a mais tranquila |
 | `vw_category_monthly_requisition_trend` | Demanda requisitada por categoria, mês a mês, com total acumulado (`SUM() OVER`) |
 | `vw_product_expiration_urgency` | Lotes ativos por produto/cozinha ordenados por validade, com acumulado de quantidade em risco (`SUM() OVER`) e ranking de urgência por cozinha (`RANK()`) |
+| `vw_category_stock_rollup` | Estoque ativo (quantidade e valor) de cada categoria **somado com o das subcategorias**: 2 CTEs sobre `vw_category_tree` (CTE recursiva), ranking de valor por nível da árvore (`RANK() OVER (PARTITION BY category_level)`) e participação no nível (`SUM() OVER`) |
+
+`vw_category_tree` (em `views/create_views.sql`) é a árvore de categorias montada com `WITH RECURSIVE`, base de `vw_category_stock_rollup` e `dim_category`. Veja [`ARCHITECTURE.md`](ARCHITECTURE.md#cte-recursiva-na-hierarquia-de-categorias).
 
 As views de DAU (`vw_dau`, `vw_dau_by_kitchen`), também com CTEs e Window Functions (`LAG`, `LEAD`, média móvel, soma acumulada e `RANK()`), estão em `views/monitoring/` e documentadas em [`MONITORING.md`](MONITORING.md).
 

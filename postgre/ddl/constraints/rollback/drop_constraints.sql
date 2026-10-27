@@ -11,6 +11,12 @@ DROP CONSTRAINT IF EXISTS fk_user_kitchen;
 ALTER TABLE tb_product
 DROP CONSTRAINT IF EXISTS fk_product_category;
 
+ALTER TABLE IF EXISTS tb_category
+DROP CONSTRAINT IF EXISTS fk_category_parent;
+
+ALTER TABLE IF EXISTS tb_category
+DROP CONSTRAINT IF EXISTS ck_category_not_self_parent;
+
 ALTER TABLE tb_product
 DROP CONSTRAINT IF EXISTS fk_product_unit;
 

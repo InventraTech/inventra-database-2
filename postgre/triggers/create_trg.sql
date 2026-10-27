@@ -45,3 +45,9 @@ BEFORE INSERT OR UPDATE OF id_batch, id_product, id_kitchen
 ON tb_alert
 FOR EACH ROW
 EXECUTE FUNCTION fn_alert_batch_consistency();
+
+CREATE TRIGGER trg_category_no_cycle
+BEFORE INSERT OR UPDATE OF id_parent_category
+ON tb_category
+FOR EACH ROW
+EXECUTE FUNCTION fn_check_category_cycle();

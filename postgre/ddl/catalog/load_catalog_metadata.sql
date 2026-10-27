@@ -45,8 +45,8 @@ FROM (VALUES
 	 'Todo produto tem unidade de medida; categoria é opcional. Código de barras é único quando informado. Alterações auditadas em tb_log_product.',
 	 'PUBLIC', 'Compras'),
 	('tb_category', 'MASTER_DATA',
-	 'Categorias de produto (ex.: carnes, laticínios, secos).',
-	 'Nome único.',
+	 'Categorias de produto em árvore (ex.: Hortifrúti > Categoria Vegetal).',
+	 'Nome único. Categoria-mãe opcional (nula = raiz); a hierarquia não pode ter ciclo (trg_category_no_cycle) e categoria com subcategorias não pode ser apagada. Percorrida com CTE recursiva em vw_category_tree.',
 	 'PUBLIC', 'Compras'),
 	('tb_measurement_unit', 'MASTER_DATA',
 	 'Unidades de medida dos produtos.',
@@ -179,6 +179,7 @@ FROM (VALUES
 	('tb_category', 'id_category', 'Identificador da categoria.', NULL, NULL, false),
 	('tb_category', 'name', 'Nome da categoria.', 'Único (UNIQUE).', NULL, false),
 	('tb_category', 'description', 'Descrição da categoria.', NULL, NULL, false),
+	('tb_category', 'id_parent_category', 'Categoria-mãe na hierarquia.', 'Opcional (FK fk_category_parent, ON DELETE RESTRICT). Nula = categoria raiz. Não pode ser a própria categoria (ck_category_not_self_parent) nem uma descendente dela (trg_category_no_cycle).', NULL, false),
 	-- tb_measurement_unit
 	('tb_measurement_unit', 'id_unit', 'Identificador da unidade.', NULL, NULL, false),
 	('tb_measurement_unit', 'symbol', 'Símbolo da unidade (kg, L, un).', 'Único (UNIQUE).', NULL, false),
