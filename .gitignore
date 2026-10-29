@@ -13,3 +13,6 @@ __pycache__/
 venv/
 
 .vscode/
+
+# cache da busca na Open Food Facts gerado pelo seed
+postgre/seeds/openfoodfacts_cache.json
