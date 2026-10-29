@@ -44,7 +44,7 @@ Em todas as tabelas abaixo, a única DF é **chave → demais colunas**, exceto 
 | `tb_category` | `id_category` | `name` | `id_category → name, description, id_parent_category` | A mãe é só uma FK para a própria tabela: nível, caminho e raiz **não** são gravados, e sim calculados por CTE recursiva em `vw_category_tree` |
 | `tb_measurement_unit` | `id_unit` | `symbol` | `id_unit → symbol, description` | |
 | `tb_product` | `id_product` | `barcode` (quando informado) | `id_product → name, brand, id_category, id_unit, barcode, photo_url, active, created_at` | `brand ↛ id_category`: uma marca pode ter produtos em categorias diferentes, então a marca não vira tabela com categoria própria |
-| `tb_supplier` | `id_supplier` | `cnpj` | `id_supplier → legal_name, cnpj, email, whatsapp, rating, active, created_at` | |
+| `tb_supplier` | `id_supplier` | `cnpj` | `id_supplier → legal_name, cnpj, email, whatsapp, rating, photo_url, active, created_at` | |
 | `tb_user` | `id_user` | `email`, `firebase_uid` (quando informado) | `id_user → name, email, password_hash, firebase_uid, photo_url, id_kitchen, id_profile, active, last_login, created_at` | O nome do perfil e o da cozinha **não** são repetidos aqui: ficam em `tb_profile` e `tb_kitchen` |
 
 ### Associativas (N:N)

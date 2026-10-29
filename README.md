@@ -123,7 +123,7 @@ Banco relacional do ERP. Detalhes, convenções e decisões de design em [`ARCHI
 | **Governança** | Catálogo de dados: descrição, regra de negócio e nível de acesso de cada tabela e coluna |
 | **Backup** | Backup gerenciado (Aiven) + `pg_dump` com restore testado no CI + recuperação de linha pela auditoria |
 | **Monitoramento** | DAU registrado pelo próprio banco a cada login (trigger em `tb_user.last_login`), com `vw_dau` e `vw_dau_by_kitchen` |
-| **Entrega** | Migrations idempotentes `V001`–`V022`, com rollback e validação no CI |
+| **Entrega** | Migrations idempotentes `V001`–`V023`, com rollback e validação no CI |
 
 ### Dicionário e migrations
 
@@ -131,7 +131,7 @@ O projeto separa o **dicionário** (código de leitura, um arquivo por assunto) 
 
 ```mermaid
 flowchart LR
-    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V022"]
+    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V023"]
     M -->|psql / CI| DB[("PostgreSQL")]
     M -->|cópia byte a byte| API["API Spring<br/>Flyway"]
     DB --> BI["Power BI / Metabase<br/>dim_* · fact_*"]
@@ -161,6 +161,7 @@ flowchart LR
 | `V020__product_supplier_updated_at.sql` | `tb_product_supplier.updated_at`, renovado em todo UPDATE por `trg_product_supplier_updated_at`: data da última gravação do vínculo produto–fornecedor, que define a ordem da lista de fornecedores do produto (do mais recente para o mais antigo) |
 | `V021__requisition_pre_list.sql` | `tb_requisition.id_pre_list` (FK para `tb_pre_list`, opcional, com índice), `uq_requisition_prelist_active`, `ck_requisition_prelist_purchase` e `trg_requisition_prelist_consistency`: a compra gerada de uma pré-lista aponta para ela, só `PURCHASE` e da cozinha da pré-lista, e o banco recusa uma segunda requisição ativa (nem `CANCELLED` nem `REJECTED`) da mesma pré-lista |
 | `V022__remove_indices_duplicados.sql` | Remove 6 índices que repetem outro: `idx_user_email` e `idx_product_barcode` duplicam o `UNIQUE` de `email` e `barcode`; os outros quatro são prefixo exato da PK ou de um índice composto |
+| `V023__supplier_photo.sql` | Foto do fornecedor (`tb_supplier.photo_url`, URL do Cloudinary) |
 
 > [!WARNING]
 > A API tem uma `V010__product_registration_event.sql` própria, que adiciona `tb_product.registration_event_id` para a fila Redis. Essa coluna ainda não está neste repositório, e o número `V010` aqui é o catálogo de dados. As migrations `V001`–`V009` são idênticas nos dois repositórios.
@@ -329,7 +330,7 @@ postgre/
 ├── triggers/        # gatilhos de negócio e de auditoria
 ├── views/           # vw_*  ·  datamart/ (dim_*, fact_*)  ·  analytics/  ·  catalog/  ·  backup/  ·  monitoring/
 │                    #   (cada pasta tem subpasta rollback/)
-├── migrations/      # V001–V022 + rollback/drop_everything.sql
+├── migrations/      # V001–V023 + rollback/drop_everything.sql
 ├── backup/          # backup.sh e restore.sh (pg_dump); dumps/ fica fora do git
 ├── seeds/           # seed.ipynb + requirements.txt
 ├── tests/           # migrations (idempotência + rollback), integridade, DAU, hierarquia de categorias, ordem dos fornecedores do produto, compra × pré-lista, backup/restore e dicionário × migrations
@@ -367,7 +368,7 @@ database-workspace.html  # documentação navegável de todos os bancos
 
 ### PostgreSQL
 
-1. A mudança nasce na pasta de dicionário correspondente **e** em uma **nova** migration, com o próximo número da sequência (hoje, `V022`). Migration já aplicada não se edita. Arquivo novo no dicionário entra também na lista `DICTIONARY` de `postgre/tests/check_dictionary_sync.sh`, que define a ordem de execução do dicionário.
+1. A mudança nasce na pasta de dicionário correspondente **e** em uma **nova** migration, com o próximo número da sequência (hoje, `V023`). Migration já aplicada não se edita. Arquivo novo no dicionário entra também na lista `DICTIONARY` de `postgre/tests/check_dictionary_sync.sh`, que define a ordem de execução do dicionário.
 2. Valide localmente com os mesmos scripts do CI, nesta ordem (todos usam as mesmas variáveis):
 
    ```bash

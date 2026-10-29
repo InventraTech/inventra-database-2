@@ -84,6 +84,7 @@ CREATE TABLE tb_supplier (
 	email VARCHAR(150),
 	whatsapp VARCHAR(20),
 	rating INTEGER,
+	photo_url VARCHAR(255),
 	active BOOLEAN NOT NULL DEFAULT true,
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id_supplier)

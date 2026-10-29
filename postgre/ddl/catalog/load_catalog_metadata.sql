@@ -191,6 +191,7 @@ FROM (VALUES
 	('tb_supplier', 'email', 'E-mail de contato.', 'Pode identificar a pessoa de contato (LGPD).', NULL, true),
 	('tb_supplier', 'whatsapp', 'WhatsApp de contato.', 'Pode identificar a pessoa de contato (LGPD).', NULL, true),
 	('tb_supplier', 'rating', 'Avaliação interna do fornecedor.', 'Entre 1 e 5 (ck_supplier_rating).', NULL, false),
+	('tb_supplier', 'photo_url', 'URL da foto do fornecedor.', 'Nula quando o fornecedor não tem foto. secure_url do Cloudinary com a versão (public_id inventra/suppliers/{id_supplier}), trocada a cada envio.', NULL, false),
 	('tb_supplier', 'active', 'Indica se o fornecedor está ativo.', 'Desativação lógica.', NULL, false),
 	('tb_supplier', 'created_at', 'Data e hora de cadastro.', NULL, NULL, false),
 	-- tb_product_supplier
