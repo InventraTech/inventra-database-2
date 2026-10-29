@@ -11,8 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # mongosh vem na imagem; o repositório é montado para os scripts rodarem dentro do container
-      - run: docker run -d --name mongo -v "$GITHUB_WORKSPACE:/repo" mongo:8
+      # mongosh vem na imagem; o repositório é montado para os scripts rodarem dentro do container.
+      # Versão fixada: a tag flutuante mongo:8 (hoje 8.3) deixou de responder ao ping no runner.
+      - run: docker run -d --name mongo -v "$GITHUB_WORKSPACE:/repo" mongo:8.0
       - run: |
           timeout 60 bash -c 'until docker exec mongo mongosh --quiet --eval "db.adminCommand({ ping: 1 }).ok" > /dev/null 2>&1; do sleep 1; done'
       - run: docker exec mongo bash /repo/mongo/tests/check_migrations.sh
+      # sem isto a esteira só mostra "exit code 124" quando o Mongo não sobe
+      - if: failure()
+        run: |
+          docker ps -a
+          docker logs mongo
