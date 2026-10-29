@@ -302,3 +302,17 @@ $$
     )
     SELECT id_category, lvl FROM subtree;
 $$;
+
+-- Toda alteração do vínculo produto–fornecedor renova updated_at; um valor escrito à mão é sobrescrito.
+CREATE FUNCTION fn_product_supplier_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS
+$$
+BEGIN
+
+    NEW.updated_at := CURRENT_TIMESTAMP;
+    RETURN NEW;
+
+END;
+$$;

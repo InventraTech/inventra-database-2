@@ -51,3 +51,9 @@ BEFORE INSERT OR UPDATE OF id_parent_category
 ON tb_category
 FOR EACH ROW
 EXECUTE FUNCTION fn_check_category_cycle();
+
+CREATE TRIGGER trg_product_supplier_updated_at
+BEFORE UPDATE
+ON tb_product_supplier
+FOR EACH ROW
+EXECUTE FUNCTION fn_product_supplier_updated_at();

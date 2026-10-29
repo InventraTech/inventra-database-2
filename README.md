@@ -123,7 +123,7 @@ Banco relacional do ERP. Detalhes, convenções e decisões de design em [`ARCHI
 | **Governança** | Catálogo de dados: descrição, regra de negócio e nível de acesso de cada tabela e coluna |
 | **Backup** | Backup gerenciado (Aiven) + `pg_dump` com restore testado no CI + recuperação de linha pela auditoria |
 | **Monitoramento** | DAU registrado pelo próprio banco a cada login (trigger em `tb_user.last_login`), com `vw_dau` e `vw_dau_by_kitchen` |
-| **Entrega** | Migrations idempotentes `V001`–`V019`, com rollback e validação no CI |
+| **Entrega** | Migrations idempotentes `V001`–`V020`, com rollback e validação no CI |
 
 ### Dicionário e migrations
 
@@ -131,7 +131,7 @@ O projeto separa o **dicionário** (código de leitura, um arquivo por assunto) 
 
 ```mermaid
 flowchart LR
-    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V019"]
+    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V020"]
     M -->|psql / CI| DB[("PostgreSQL")]
     M -->|cópia byte a byte| API["API Spring<br/>Flyway"]
     DB --> BI["Power BI / Metabase<br/>dim_* · fact_*"]
@@ -158,6 +158,7 @@ flowchart LR
 | `V017__pre_list_id_source.sql` | `tb_pre_list.id_source` (único, opcional): id da pré-lista no banco do 1º ano, para o RPA não importar a mesma lista duas vezes |
 | `V018__pre_list_kitchen.sql` | `tb_pre_list.id_kitchen` (FK para `tb_kitchen`, opcional, com índice): cozinha da pré-lista, para filtrar as listas por cozinha |
 | `V019__category_hierarchy.sql` | Hierarquia de categorias (`tb_category.id_parent_category`) percorrida com CTE recursiva: trava anti-ciclo, `fn_category_descendants`, `vw_category_tree`, `vw_category_stock_rollup` e `dim_category` (snowflake) |
+| `V020__product_supplier_updated_at.sql` | `tb_product_supplier.updated_at`, renovado em todo UPDATE por `trg_product_supplier_updated_at`: data da última gravação do vínculo produto–fornecedor, que define a ordem da lista de fornecedores do produto (do mais recente para o mais antigo) |
 
 > [!WARNING]
 > A API tem uma `V010__product_registration_event.sql` própria, que adiciona `tb_product.registration_event_id` para a fila Redis. Essa coluna ainda não está neste repositório, e o número `V010` aqui é o catálogo de dados. As migrations `V001`–`V009` são idênticas nos dois repositórios.
@@ -324,10 +325,10 @@ postgre/
 ├── triggers/        # gatilhos de negócio e de auditoria
 ├── views/           # vw_*  ·  datamart/ (dim_*, fact_*)  ·  analytics/  ·  catalog/  ·  backup/  ·  monitoring/
 │                    #   (cada pasta tem subpasta rollback/)
-├── migrations/      # V001–V019 + rollback/drop_everything.sql
+├── migrations/      # V001–V020 + rollback/drop_everything.sql
 ├── backup/          # backup.sh e restore.sh (pg_dump); dumps/ fica fora do git
 ├── seeds/           # seed.ipynb + requirements.txt
-├── tests/           # migrations (idempotência + rollback), integridade, DAU, hierarquia de categorias, backup/restore e dicionário × migrations
+├── tests/           # migrations (idempotência + rollback), integridade, DAU, hierarquia de categorias, ordem dos fornecedores do produto, backup/restore e dicionário × migrations
 └── docs/            # arquitetura, regras, views, modelagem, otimização
 mongo/
 ├── schemas/         # contrato de cada coleção em JSON Schema + rollback/remove_validators.js
@@ -362,7 +363,7 @@ database-workspace.html  # documentação navegável de todos os bancos
 
 ### PostgreSQL
 
-1. A mudança nasce na pasta de dicionário correspondente **e** em uma **nova** migration, com o próximo número da sequência (hoje, `V019`). Migration já aplicada não se edita. Arquivo novo no dicionário entra também na lista `DICTIONARY` de `postgre/tests/check_dictionary_sync.sh`, que define a ordem de execução do dicionário.
+1. A mudança nasce na pasta de dicionário correspondente **e** em uma **nova** migration, com o próximo número da sequência (hoje, `V020`). Migration já aplicada não se edita. Arquivo novo no dicionário entra também na lista `DICTIONARY` de `postgre/tests/check_dictionary_sync.sh`, que define a ordem de execução do dicionário.
 2. Valide localmente com os mesmos scripts do CI, nesta ordem (todos usam as mesmas variáveis):
 
    ```bash
@@ -372,6 +373,7 @@ database-workspace.html  # documentação navegável de todos os bancos
    psql -X -q -v ON_ERROR_STOP=1 -f postgre/tests/check_daily_access.sql
    psql -X -q -v ON_ERROR_STOP=1 -f postgre/tests/check_ui_click_counter.sql
    psql -X -q -v ON_ERROR_STOP=1 -f postgre/tests/check_category_hierarchy.sql
+   psql -X -q -v ON_ERROR_STOP=1 -f postgre/tests/check_product_supplier_updated_at.sql
    bash postgre/tests/check_backup_restore.sh
    bash postgre/tests/check_dictionary_sync.sh
    ```
@@ -383,9 +385,10 @@ database-workspace.html  # documentação navegável de todos os bancos
    | `check_daily_access.sql` | O registro de acessos pela trigger e os números de `vw_dau` e `vw_dau_by_kitchen` |
    | `check_ui_click_counter.sql` | A linha única do contador de cliques, a soma por coluna, `vw_ui_click_ranking` e o catálogo das colunas |
    | `check_category_hierarchy.sql` | A árvore de categorias (`vw_category_tree`), a subárvore (`fn_category_descendants`), a soma pela árvore (`vw_category_stock_rollup`) e as travas contra autorreferência, ciclo e exclusão de categoria com filhas |
+   | `check_product_supplier_updated_at.sql` | O `updated_at` do vínculo produto–fornecedor: preenchido no INSERT, renovado pelo trigger em todo UPDATE (até o escrito à mão), o mais recente vem primeiro e a coluna está no catálogo |
    | `check_backup_restore.sh` | Recuperação pela auditoria, backup, restore em banco novo e contagens iguais |
    | `check_dictionary_sync.sh` | O dicionário gera exatamente o mesmo schema e catálogo que as migrations |
-3. O CI roda esses sete testes em cada push/PR que toque `postgre/`.
+3. O CI roda esses oito testes em cada push/PR que toque `postgre/`.
 4. A API copia `V001`+ byte a byte para o Flyway; nunca edite migration direto lá.
 
 > `RAISE EXCEPTION` das functions e procedures fica em português de propósito: a API repassa a mensagem ao cliente nas respostas 409.

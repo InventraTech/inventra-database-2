@@ -2,6 +2,9 @@
 -- ROLLBACK TRIGGERS
 -- ---------------------------------------------------
 
+DROP TRIGGER IF EXISTS trg_product_supplier_updated_at
+ON tb_product_supplier;
+
 DROP TRIGGER IF EXISTS trg_category_no_cycle
 ON tb_category;
 
