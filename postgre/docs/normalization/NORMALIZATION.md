@@ -51,7 +51,7 @@ Em todas as tabelas abaixo, a única DF é **chave → demais colunas**, exceto 
 
 | Tabela | PK | Dependências funcionais |
 |--------|----|-------------------------|
-| `tb_product_supplier` | `(id_product, id_supplier)` | `(id_product, id_supplier) → supplier_code, reference_price, lead_time_days` |
+| `tb_product_supplier` | `(id_product, id_supplier)` | `(id_product, id_supplier) → supplier_code, reference_price, lead_time_days, updated_at` |
 | `tb_product_kitchen_parameter` | `(id_product, id_kitchen)` | `(id_product, id_kitchen) → min_stock, max_stock, average_daily_consumption` |
 | `tb_alert_read` | `(id_alert, id_user)` | `(id_alert, id_user) → read_at` |
 
@@ -105,7 +105,7 @@ A 2FN só pode ser violada em tabela com **chave composta**. São quatro, e em n
 
 | Tabela | Atributo | Depende de | Por que não de parte da chave |
 |--------|----------|------------|--------------------------------|
-| `tb_product_supplier` | `supplier_code`, `reference_price`, `lead_time_days` | `(id_product, id_supplier)` | O preço e o prazo são da **combinação**: o mesmo produto tem preço diferente em cada fornecedor, e o mesmo fornecedor, em cada produto. O nome do produto e a razão social do fornecedor, que dependeriam de só uma parte, ficam em `tb_product` e `tb_supplier` |
+| `tb_product_supplier` | `supplier_code`, `reference_price`, `lead_time_days`, `updated_at` | `(id_product, id_supplier)` | O preço e o prazo são da **combinação**: o mesmo produto tem preço diferente em cada fornecedor, e o mesmo fornecedor, em cada produto. O nome do produto e a razão social do fornecedor, que dependeriam de só uma parte, ficam em `tb_product` e `tb_supplier`. `updated_at` é a data da última gravação **daquele vínculo** |
 | `tb_product_kitchen_parameter` | `min_stock`, `max_stock`, `average_daily_consumption` | `(id_product, id_kitchen)` | O estoque mínimo de arroz numa cozinha é diferente do de outra cozinha |
 | `tb_alert_read` | `read_at` | `(id_alert, id_user)` | É o momento em que **aquela pessoa** leu **aquele alerta** |
 | `tb_user_daily_access` | `first_access_time`, `last_access_time`, `access_count` | `(id_user, access_date)` | São os acessos **daquela pessoa** **naquele dia**; o nome e a cozinha do usuário ficam em `tb_user` |

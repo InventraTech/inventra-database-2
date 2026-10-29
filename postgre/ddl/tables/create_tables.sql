@@ -73,6 +73,7 @@ CREATE TABLE tb_product_supplier (
 	supplier_code VARCHAR(50),
 	reference_price DECIMAL(12,2),
 	lead_time_days INTEGER,
+	updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id_product, id_supplier)
 );
 

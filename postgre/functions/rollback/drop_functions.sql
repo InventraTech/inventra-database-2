@@ -1,6 +1,8 @@
 -- ---------------------------------------------------
 -- ROLLBACK FUNCTIONS
 -- ---------------------------------------------------
+DROP FUNCTION IF EXISTS fn_product_supplier_updated_at();
+
 DROP FUNCTION IF EXISTS fn_category_descendants(INTEGER);
 
 DROP FUNCTION IF EXISTS fn_check_category_cycle();

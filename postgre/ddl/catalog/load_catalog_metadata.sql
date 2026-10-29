@@ -58,7 +58,7 @@ FROM (VALUES
 	 'RESTRICTED', 'Compras'),
 	('tb_product_supplier', 'RELATIONSHIP',
 	 'Associativa N:N entre produto e fornecedor, com condições comerciais.',
-	 'PK composta (id_product, id_supplier): um fornecedor aparece uma única vez por produto.',
+	 'PK composta (id_product, id_supplier): um fornecedor aparece uma única vez por produto. updated_at diz qual vínculo foi gravado por último (trg_product_supplier_updated_at) e define a ordem em que a API lista os fornecedores do produto.',
 	 'RESTRICTED', 'Compras'),
 	('tb_product_kitchen_parameter', 'RELATIONSHIP',
 	 'Associativa N:N entre produto e cozinha, com os parâmetros de estoque.',
@@ -199,6 +199,7 @@ FROM (VALUES
 	('tb_product_supplier', 'supplier_code', 'Código do produto no catálogo do fornecedor.', NULL, NULL, false),
 	('tb_product_supplier', 'reference_price', 'Preço de referência negociado.', NULL, NULL, false),
 	('tb_product_supplier', 'lead_time_days', 'Prazo de entrega em dias.', NULL, NULL, false),
+	('tb_product_supplier', 'updated_at', 'Data e hora da última gravação do vínculo.', 'Padrão: momento da inserção. Todo UPDATE renova o valor (trg_product_supplier_updated_at). A API regrava o vínculo a cada POST /api/products/{id}/suppliers, mesmo quando os dados não mudam, e lista os fornecedores do mais recente para o mais antigo. Nos vínculos anteriores à V020, é a data da migration.', NULL, false),
 	-- tb_product_kitchen_parameter
 	('tb_product_kitchen_parameter', 'id_product', 'Produto parametrizado.', 'Parte da PK composta.', NULL, false),
 	('tb_product_kitchen_parameter', 'id_kitchen', 'Cozinha do parâmetro.', 'Parte da PK composta.', NULL, false),
