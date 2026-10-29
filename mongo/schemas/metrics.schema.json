@@ -1,24 +1,81 @@
 {
   "bsonType": "object",
   "title": "dbIAI.metrics",
-  "description": "Um documento por requisição de /chat (ColetorMetricas). Não guarda o texto do prompt.",
-  "required": ["timestamp", "session_id", "user_id", "latencia_total_ms", "status", "nos", "chamadas",
-               "tokens_entrada", "tokens_saida", "custo_usd", "erros_componentes", "resolvida", "agentes_chamados"],
+  "description": "Um documento por requisição de /chat (ColetorMetricas). Não guarda o texto do prompt nem os argumentos das ferramentas.",
+  "required": [
+    "timestamp",
+    "session_id",
+    "user_id",
+    "kitchen_id",
+    "latencia_total_ms",
+    "status",
+    "nos",
+    "chamadas",
+    "tokens_entrada",
+    "tokens_saida",
+    "custo_usd",
+    "erros_componentes",
+    "resolvida",
+    "agentes_chamados"
+  ],
   "properties": {
-    "timestamp":         { "bsonType": "date", "description": "Janela de GET /metrics (7 ou 30 dias)" },
-    "session_id":        { "bsonType": "string" },
-    "user_id":           { "bsonType": "string" },
-    "latencia_total_ms": { "bsonType": ["double", "int"], "minimum": 0 },
-    "status":            { "enum": ["ok", "bloqueado", "erro"], "description": "bloqueado = guardrail de entrada recusou; não conta como erro" },
+    "timestamp": {
+      "bsonType": "date",
+      "description": "Janela de GET /metrics (7 ou 30 dias)"
+    },
+    "session_id": {
+      "bsonType": "string"
+    },
+    "user_id": {
+      "bsonType": "string"
+    },
+    "kitchen_id": {
+      "bsonType": [
+        "int",
+        "long"
+      ],
+      "minimum": 1,
+      "description": "Cozinha da requisição; GET /metrics só soma a cozinha do usuário"
+    },
+    "latencia_total_ms": {
+      "bsonType": [
+        "double",
+        "int"
+      ],
+      "minimum": 0
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "bloqueado",
+        "erro"
+      ],
+      "description": "bloqueado = guardrail de entrada recusou; não conta como erro"
+    },
     "nos": {
       "bsonType": "array",
       "items": {
         "bsonType": "object",
-        "required": ["no", "ms", "erro"],
+        "required": [
+          "no",
+          "ms",
+          "erro"
+        ],
         "properties": {
-          "no":   { "bsonType": "string", "description": "Nó do grafo LangGraph" },
-          "ms":   { "bsonType": ["double", "int"], "minimum": 0 },
-          "erro": { "bsonType": "bool" }
+          "no": {
+            "bsonType": "string",
+            "description": "Nó do grafo LangGraph"
+          },
+          "ms": {
+            "bsonType": [
+              "double",
+              "int"
+            ],
+            "minimum": 0
+          },
+          "erro": {
+            "bsonType": "bool"
+          }
         }
       }
     },
@@ -26,21 +83,247 @@
       "bsonType": "array",
       "items": {
         "bsonType": "object",
-        "required": ["modelo", "tokens_entrada", "tokens_saida", "custo_usd", "latencia_ms"],
+        "required": [
+          "modelo",
+          "tokens_entrada",
+          "tokens_saida",
+          "custo_usd",
+          "latencia_ms"
+        ],
         "properties": {
-          "modelo":         { "bsonType": "string" },
-          "tokens_entrada": { "bsonType": ["int", "long"], "minimum": 0 },
-          "tokens_saida":   { "bsonType": ["int", "long"], "minimum": 0 },
-          "custo_usd":      { "bsonType": ["double", "int"], "minimum": 0 },
-          "latencia_ms":    { "bsonType": ["double", "int"], "minimum": 0 }
+          "modelo": {
+            "bsonType": "string"
+          },
+          "tokens_entrada": {
+            "bsonType": [
+              "int",
+              "long"
+            ],
+            "minimum": 0
+          },
+          "tokens_saida": {
+            "bsonType": [
+              "int",
+              "long"
+            ],
+            "minimum": 0
+          },
+          "custo_usd": {
+            "bsonType": [
+              "double",
+              "int"
+            ],
+            "minimum": 0
+          },
+          "latencia_ms": {
+            "bsonType": [
+              "double",
+              "int"
+            ],
+            "minimum": 0
+          }
         }
-      }
+      },
+      "description": "Uma entrada por chamada de LLM (Gemini e Groq); o JEV fica em jev[]"
     },
-    "tokens_entrada":    { "bsonType": ["int", "long"], "minimum": 0 },
-    "tokens_saida":      { "bsonType": ["int", "long"], "minimum": 0 },
-    "custo_usd":         { "bsonType": ["double", "int"], "minimum": 0 },
-    "erros_componentes": { "bsonType": "array", "items": { "bsonType": "string" }, "description": "llm:*, tool:*, chain:*" },
-    "resolvida":         { "bsonType": "bool", "description": "Especialista respondeu e o juiz aprovou" },
-    "agentes_chamados":  { "bsonType": "array", "items": { "bsonType": "string" } }
+    "tokens_entrada": {
+      "bsonType": [
+        "int",
+        "long"
+      ],
+      "minimum": 0,
+      "description": "Soma de chamadas[] mais os tokens informados pelo JEV"
+    },
+    "tokens_saida": {
+      "bsonType": [
+        "int",
+        "long"
+      ],
+      "minimum": 0,
+      "description": "Soma de chamadas[] mais os tokens informados pelo JEV"
+    },
+    "custo_usd": {
+      "bsonType": [
+        "double",
+        "int"
+      ],
+      "minimum": 0,
+      "description": "Custo do turno: LLMs (chamadas[]) mais o JEV (jev[].custo_usd)"
+    },
+    "erros_componentes": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "string"
+      },
+      "description": "llm:*, tool:*, chain:*, jev:*, inclusive os recuperados por fallback"
+    },
+    "resolvida": {
+      "bsonType": "bool",
+      "description": "Execução autorizada concluída ou FAQ respondida; bloqueio e erro nunca contam"
+    },
+    "agentes_chamados": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "string"
+      },
+      "description": "Ex.: guardrail_insulto, estoquista, jev, faq (sem o motivo, que fica depois dos dois pontos)"
+    },
+    "llm_mode": {
+      "bsonType": "string",
+      "description": "Modo da IAI na requisição (live ou demo)"
+    },
+    "jev": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "id": {
+            "bsonType": "string",
+            "description": "Identificador do julgamento"
+          },
+          "agent": {
+            "bsonType": "string",
+            "description": "Especialista julgado (estoquista, comprador, supervisor, faq)"
+          },
+          "tool": {
+            "bsonType": "string",
+            "description": "propor_* julgada, ou resposta_final quando o JEV julga o texto da resposta"
+          },
+          "attempt": {
+            "bsonType": [
+              "int",
+              "long"
+            ],
+            "minimum": 0,
+            "description": "1 = primeira execução do especialista, 2 = nova execução depois de uma reprovação"
+          },
+          "status": {
+            "bsonType": "string"
+          },
+          "decision": {
+            "bsonType": "string",
+            "description": "APPROVE, RETRY_SPECIALIST, ASK_USER ou REJECT; mensagens da validação local não têm decisão do JEV"
+          },
+          "checks": {
+            "bsonType": "object",
+            "description": "Probabilidade (0 a 1) de cada critério avaliado pelo JEV",
+            "additionalProperties": {
+              "bsonType": [
+                "double",
+                "int"
+              ]
+            }
+          },
+          "failed_checks": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "string"
+            },
+            "description": "Critérios que ficaram abaixo do limiar"
+          },
+          "duration_ms": {
+            "bsonType": [
+              "double",
+              "int"
+            ],
+            "minimum": 0,
+            "description": "Latência da chamada ao JEV"
+          },
+          "model": {
+            "bsonType": "string",
+            "description": "Modelo do JEV que respondeu"
+          },
+          "usage": {
+            "bsonType": "object",
+            "description": "Tokens informados pelo JEV",
+            "properties": {
+              "input_tokens": {
+                "bsonType": [
+                  "int",
+                  "long"
+                ],
+                "minimum": 0
+              },
+              "output_tokens": {
+                "bsonType": [
+                  "int",
+                  "long"
+                ],
+                "minimum": 0
+              }
+            }
+          },
+          "custo_usd": {
+            "bsonType": [
+              "double",
+              "int"
+            ],
+            "minimum": 0,
+            "description": "Estimativa do custo desta chamada (só tokens de entrada são cobrados)"
+          },
+          "error_type": {
+            "bsonType": "string",
+            "description": "Código seguro da falha do JEV (sem texto de SDK nem corpo HTTP)"
+          },
+          "created_at": {
+            "bsonType": "string",
+            "description": "ISO 8601 (texto)"
+          },
+          "decided_at": {
+            "bsonType": "string",
+            "description": "ISO 8601 (texto)"
+          },
+          "finished_at": {
+            "bsonType": "string",
+            "description": "ISO 8601 (texto)"
+          }
+        }
+      },
+      "description": "Uma entrada por julgamento do JEV no turno (propostas e resposta final)"
+    },
+    "jev_events": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "required": [
+          "event",
+          "at"
+        ],
+        "properties": {
+          "event": {
+            "bsonType": "string",
+            "description": "Ex.: jev_revisao_aprovada, jev_revisao_reprovada, validacao_local_aprovada"
+          },
+          "at": {
+            "bsonType": "string",
+            "description": "ISO 8601 (texto)"
+          },
+          "id": {
+            "bsonType": "string"
+          },
+          "agent": {
+            "bsonType": "string"
+          },
+          "tool": {
+            "bsonType": "string"
+          },
+          "attempt": {
+            "bsonType": [
+              "int",
+              "long"
+            ],
+            "minimum": 0
+          }
+        }
+      },
+      "description": "Linha do tempo técnica dos julgamentos, sem argumentos nem conversa"
+    },
+    "error_type": {
+      "bsonType": [
+        "string",
+        "null"
+      ],
+      "description": "Tipo da exceção quando status = erro"
+    }
   }
 }

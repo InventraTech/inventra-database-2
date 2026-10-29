@@ -65,7 +65,7 @@ O `build.py` só reescreve o bloco de dados do HTML; a interface é o próprio a
 | Banco | Pasta | Usado por | Papel | CI |
 |-------|-------|-----------|-------|----|
 | **PostgreSQL 16** | [`postgre/`](postgre) | API Spring | Fonte da verdade do cadastro, estoque, requisições, inventário, alertas e auditoria | [`migrations.yml`](.github/workflows/migrations.yml) |
-| **MongoDB 8** | [`mongo/`](mongo) | IA (IAI) | Banco `dbIAI`: conversas do chat e métricas de custo/latência por requisição | [`mongo.yml`](.github/workflows/mongo.yml) |
+| **MongoDB 8** | [`mongo/`](mongo) | IA (IAI) | Banco `dbIAI`: conversas do chat, métricas de custo/latência (com o JEV) por requisição e propostas de ação aguardando aprovação | [`mongo.yml`](.github/workflows/mongo.yml) |
 | **Redis 7** | [`redis/`](redis) | API Spring | Refresh tokens, redefinição de senha, pedidos de acesso, fila de cadastro e ranking de validade | [`redis.yml`](.github/workflows/redis.yml) |
 | **Neo4j 5** | [`neo4j/`](neo4j) | API Spring (proposto) | Projeção de leitura para cobertura de fornecedores por requisição | [`neo4j.yml`](.github/workflows/neo4j.yml) |
 
@@ -88,7 +88,7 @@ flowchart LR
 
     API -->|Flyway| PG[("PostgreSQL<br/>cadastro · estoque · auditoria")]
     API --> RD[("Redis<br/>tokens · acesso · fila · ranking")]
-    IAI --> MG[("MongoDB<br/>dbIAI: sessions · metrics")]
+    IAI --> MG[("MongoDB<br/>dbIAI: sessions · metrics · approvals")]
     PG --> BI["Power BI / Metabase<br/>dim_* · fact_*"]
 
     REPO["inventra-database-2"] -.->|migrations V001…| PG
@@ -214,13 +214,15 @@ jupyter notebook seeds/seed.ipynb
 
 ## MongoDB
 
-Banco de documentos da IA (`dbIAI`). Guarda o log das conversas e as métricas de cada requisição; nada do estoque. Modelo completo em [`MONGO_MODEL.md`](mongo/docs/MONGO_MODEL.md).
+Banco de documentos da IA (`dbIAI`). Guarda o log das conversas, as métricas de cada requisição e as propostas de ação que esperam a aprovação do usuário; nada do estoque. Modelo completo em [`MONGO_MODEL.md`](mongo/docs/MONGO_MODEL.md).
 
 | Coleção | Conteúdo | Escrita por | Índices |
 |---------|----------|-------------|---------|
-| `sessions` | Uma conversa: `session_id`, `user_id`, `summary` (vazio = ativa) e `messages[]` com `role` `human`, `iai` ou `judge` | `memory.py` | `session_id_1`, `user_id_1_started_at_-1` |
-| `metrics` | Uma requisição de `/chat`: latência por nó do grafo, chamadas de LLM (tokens e custo), status e se foi resolvida | `metrics.py` | `timestamp_-1` |
-| `schema_migrations` | Migrations aplicadas por esta esteira (`_id = 'V001'`) | `mongo/migrations` | |
+| `sessions` | Uma conversa de um usuário em uma cozinha: `session_id`, `user_id`, `kitchen_id`, `active`, `summary` (vazio = ativa) e `messages[]` com `role` `human`, `iai` ou `judge` | `memory.py` | `user_id_1_kitchen_id_1_session_id_1_active_1` (único parcial), `user_id_1_kitchen_id_1_started_at_-1` |
+| `metrics` | Uma requisição de `/chat`: latência por nó do grafo, chamadas de LLM, julgamentos do JEV (`jev[]`, com latência e custo), tokens, custo, status e se foi resolvida | `metrics.py` | `kitchen_id_1_timestamp_-1` |
+| `approvals` | Proposta de ação sobre o estoque (human-in-the-loop): imutável, com `proposal_hash`, retrato `before[]`, `status` e `audit[]` embutida | `approvals.py` | `requester_id_1_kitchen_id_1_idempotency_key_1` (único), `status_1_expires_at_1` |
+| `notifications` | Reservada: a IAI cria o índice, mas ainda não grava | | `kitchen_id_1_created_at_-1` |
+| `schema_migrations` | Migrations aplicadas por esta esteira (`_id = 'V001'`, `'V002'`) | `mongo/migrations` | |
 
 | | |
 |---|---|
@@ -228,7 +230,7 @@ Banco de documentos da IA (`dbIAI`). Guarda o log das conversas e as métricas d
 | **Contrato** | `$jsonSchema` em [`mongo/schemas/`](mongo/schemas), com `validationLevel: moderate` e `validationAction: warn`: documento fora do contrato é gravado e gera aviso no log, para não derrubar o chat |
 | **Privacidade** | `content` já chega anonimizado pela IAI (e-mail, CPF, RG e telefone viram tokens); `user_id` é o único identificador pessoal |
 | **Retenção** | Sem TTL. Uma retenção de `metrics` (ex.: 90 dias) fica para uma migration futura |
-| **Entrega** | `V001__init_dbiai.js` idempotente, com rollback e validação no CI |
+| **Entrega** | `V001__init_dbiai.js` e `V002__approvals_kitchen_jev.js`, idempotentes, com rollback e validação no CI |
 
 ### Quick start
 
@@ -241,7 +243,7 @@ for f in migrations/V*.js; do mongosh "$MONGO_CONNECTION" --file "$f"; done
 
 `MONGO_DB` troca o banco alvo (padrão `dbIAI`).
 
-**Rollback completo** (apaga as conversas e as métricas):
+**Rollback completo** (apaga as conversas, as métricas e as propostas):
 
 ```bash
 mongosh "$MONGO_CONNECTION" --file migrations/rollback/drop_everything.js
@@ -335,7 +337,7 @@ postgre/
 mongo/
 ├── schemas/         # contrato de cada coleção em JSON Schema + rollback/remove_validators.js
 ├── indexes/         # create_indexes.js + rollback/
-├── migrations/      # V001__init_dbiai.js + rollback/drop_everything.js
+├── migrations/      # V001__init_dbiai.js, V002__approvals_kitchen_jev.js + rollback/drop_everything.js
 ├── seeds/           # seed.ipynb + requirements.txt
 ├── tests/           # migrations (idempotência + rollback), contrato, índices e dicionário × migrations
 └── docs/            # MONGO_MODEL.md
