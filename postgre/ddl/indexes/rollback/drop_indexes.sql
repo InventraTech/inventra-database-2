@@ -6,8 +6,6 @@ DROP INDEX IF EXISTS idx_user_profile;
 
 DROP INDEX IF EXISTS idx_user_kitchen;
 
-DROP INDEX IF EXISTS idx_user_email;
-
 DROP INDEX IF EXISTS idx_user_active;
 
 DROP INDEX IF EXISTS idx_product_category;
@@ -16,21 +14,13 @@ DROP INDEX IF EXISTS idx_category_parent;
 
 DROP INDEX IF EXISTS idx_product_unit;
 
-DROP INDEX IF EXISTS idx_product_barcode;
-
 DROP INDEX IF EXISTS idx_product_active;
 
-DROP INDEX IF EXISTS idx_productsupplier_product;
-
 DROP INDEX IF EXISTS idx_productsupplier_supplier;
-
-DROP INDEX IF EXISTS idx_parameter_product;
 
 DROP INDEX IF EXISTS idx_parameter_kitchen;
 
 DROP INDEX IF EXISTS idx_batch_product;
-
-DROP INDEX IF EXISTS idx_batch_kitchen;
 
 DROP INDEX IF EXISTS idx_batch_supplier;
 
@@ -43,8 +33,6 @@ DROP INDEX IF EXISTS idx_requisition_kitchen;
 DROP INDEX IF EXISTS idx_requisition_requester_user;
 
 DROP INDEX IF EXISTS idx_requisition_approver_user;
-
-DROP INDEX IF EXISTS idx_requisition_status;
 
 DROP INDEX IF EXISTS idx_requisition_created_at;
 
