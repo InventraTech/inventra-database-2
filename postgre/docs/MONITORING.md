@@ -102,7 +102,7 @@ O resultado foi conferido dia a dia contra o `COUNT(DISTINCT)`: os 90 dias batem
 
 ## Massa de dados
 
-A seção 16 do `seeds/seed.ipynb` gera 90 dias de histórico coerente com `tb_user.last_login`: o último acesso de cada usuário é exatamente o `last_login` dele. Cada usuário tem uma frequência de uso (pesada, média ou leve), e o uso cai no fim de semana. O seed insere direto na tabela, porque a trigger só registra o login "de agora".
+A seção 18 do `seeds/seed.ipynb` gera 21 dias de histórico (500 linhas, como as demais tabelas do seed) coerente com `tb_user.last_login`: o último acesso de cada usuário é exatamente o `last_login` dele. Os outros dias variam com a frequência de uso de cada usuário, e o uso cai no fim de semana. O seed insere direto na tabela, porque a trigger só registra o login "de agora". A medição acima foi feita com a massa anterior, maior (5.010 usuários e 90 dias).
 
 ## Testes
 
