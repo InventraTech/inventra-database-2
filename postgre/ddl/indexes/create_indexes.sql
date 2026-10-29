@@ -93,6 +93,9 @@ ON tb_alert (id_product);
 CREATE INDEX idx_alert_batch 
 ON tb_alert (id_batch);
 
+CREATE INDEX idx_alert_is_read 
+ON tb_alert (is_read);
+
 CREATE INDEX idx_alert_severity 
 ON tb_alert (severity);
 

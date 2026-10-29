@@ -173,6 +173,7 @@ CREATE TABLE tb_alert (
 	id_target_profile INTEGER,
 	ref_key VARCHAR(100),
 	message VARCHAR(500) NOT NULL,
+	is_read BOOLEAN NOT NULL DEFAULT false,
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id_alert)
 );

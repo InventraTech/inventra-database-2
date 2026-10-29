@@ -110,6 +110,7 @@ BEGIN
         WHERE a.id_product = NEW.id_product
           AND a.id_kitchen = NEW.id_kitchen
           AND a.type = 'STOCK'
+          AND a.is_read = false
           AND NOT EXISTS (
               SELECT 1 FROM tb_alert_read ar
               WHERE ar.id_alert = a.id_alert
@@ -166,6 +167,7 @@ BEGIN
         FROM tb_alert a
         WHERE a.id_batch = NEW.id_batch
           AND a.type = 'EXPIRATION'
+          AND a.is_read = false
           AND NOT EXISTS (
               SELECT 1 FROM tb_alert_read ar
               WHERE ar.id_alert = a.id_alert

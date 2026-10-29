@@ -21,7 +21,7 @@ Arquivo: `functions/create_functions.sql`. São regras automáticas, disparadas 
 
 `fn_category_descendants(p_id_category)` é a exceção: não é de trigger, é chamada direto. Devolve a categoria e todas as subcategorias abaixo dela (CTE recursiva), para filtrar produtos de um grupo inteiro.
 
-**Alerta aberto** é o que ninguém leu ainda: nenhuma linha em `tb_alert_read` (leitura por pessoa). Até a `V021` havia também `tb_alert.is_read`, a leitura do alerta inteiro; a `V022` a removeu e converteu o que estava lido em leitura de cada destinatário.
+**Alerta aberto** é o que ninguém leu ainda: `is_read = false` (leitura antiga, do alerta inteiro) e nenhuma linha em `tb_alert_read` (leitura por pessoa).
 
 ## Procedures
 

@@ -39,7 +39,7 @@ ON tb_stock_batch
 FOR EACH ROW
 EXECUTE FUNCTION fn_expiration_alert();
 
--- só nas colunas da regra: mudar qualquer outro campo do alerta não paga o custo da consulta
+-- só nas colunas da regra: marcar como lido (is_read) não paga o custo da consulta
 CREATE TRIGGER trg_alert_batch_consistency
 BEFORE INSERT OR UPDATE OF id_batch, id_product, id_kitchen
 ON tb_alert

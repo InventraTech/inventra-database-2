@@ -160,7 +160,7 @@ flowchart LR
 | `V019__category_hierarchy.sql` | Hierarquia de categorias (`tb_category.id_parent_category`) percorrida com CTE recursiva: trava anti-ciclo, `fn_category_descendants`, `vw_category_tree`, `vw_category_stock_rollup` e `dim_category` (snowflake) |
 | `V020__product_supplier_updated_at.sql` | `tb_product_supplier.updated_at`, renovado em todo UPDATE por `trg_product_supplier_updated_at`: data da última gravação do vínculo produto–fornecedor, que define a ordem da lista de fornecedores do produto (do mais recente para o mais antigo) |
 | `V021__requisition_pre_list.sql` | `tb_requisition.id_pre_list` (FK para `tb_pre_list`, opcional, com índice), `uq_requisition_prelist_active`, `ck_requisition_prelist_purchase` e `trg_requisition_prelist_consistency`: a compra gerada de uma pré-lista aponta para ela, só `PURCHASE` e da cozinha da pré-lista, e o banco recusa uma segunda requisição ativa (nem `CANCELLED` nem `REJECTED`) da mesma pré-lista |
-| `V022__remove_alert_is_read_e_indices_duplicados.sql` | Remove `tb_alert.is_read` (a leitura é só por pessoa, em `tb_alert_read`; o que estava lido vira leitura de cada destinatário) e 7 índices: 5 que repetem a PK ou um índice composto e 2 que duplicam o `UNIQUE` de `email` e `barcode` |
+| `V022__remove_indices_duplicados.sql` | Remove 6 índices que repetem outro: `idx_user_email` e `idx_product_barcode` duplicam o `UNIQUE` de `email` e `barcode`; os outros quatro são prefixo exato da PK ou de um índice composto |
 
 > [!WARNING]
 > A API tem uma `V010__product_registration_event.sql` própria, que adiciona `tb_product.registration_event_id` para a fila Redis. Essa coluna ainda não está neste repositório, e o número `V010` aqui é o catálogo de dados. As migrations `V001`–`V009` são idênticas nos dois repositórios.
@@ -194,7 +194,7 @@ for f in migrations/V*.sql; do
 done
 ```
 
-As migrations são idempotentes: reaplicar uma migration logo depois de aplicá-la não gera erro. Quando uma migration remove objetos (como a `V022`), as anteriores deixam de valer sobre o estado final, o que não importa: o Flyway nunca as reaplica.
+As migrations são idempotentes: reexecutar em um banco que já as recebeu não gera erro.
 
 **Rollback completo:**
 
@@ -383,7 +383,7 @@ database-workspace.html  # documentação navegável de todos os bancos
 
    | Script | O que garante |
    |--------|---------------|
-   | `check_migrations.sh` | Aplica as migrations reaplicando cada uma em seguida (idempotência), faz rollback completo e reaplica do zero |
+   | `check_migrations.sh` | Aplica as migrations, reaplica (idempotência), faz rollback completo e reaplica do zero |
    | `check_normalization_integrity.sql` | As triggers que protegem as redundâncias controladas (`divergence` e alerta × lote) |
    | `check_daily_access.sql` | O registro de acessos pela trigger e os números de `vw_dau` e `vw_dau_by_kitchen` |
    | `check_ui_click_counter.sql` | A linha única do contador de cliques, a soma por coluna, `vw_ui_click_ranking` e o catálogo das colunas |

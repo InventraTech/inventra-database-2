@@ -323,6 +323,7 @@ BEGIN
         SELECT 1 FROM tb_alert a
         WHERE a.id_batch = e.id_batch
           AND a.type = 'EXPIRATION'
+          AND a.is_read = false
           AND NOT EXISTS (
               SELECT 1 FROM tb_alert_read ar
               WHERE ar.id_alert = a.id_alert
@@ -347,6 +348,7 @@ BEGIN
         WHERE a.id_product = p.id_product
           AND a.id_kitchen = p.id_kitchen
           AND a.type = 'STOCK'
+          AND a.is_read = false
           AND NOT EXISTS (
               SELECT 1 FROM tb_alert_read ar
               WHERE ar.id_alert = a.id_alert
@@ -395,6 +397,7 @@ BEGIN
         SELECT 1 FROM tb_alert a
         WHERE a.id_batch = sb.id_batch
           AND a.type = 'EXPIRING'
+          AND a.is_read = false
           AND NOT EXISTS (
               SELECT 1 FROM tb_alert_read ar
               WHERE ar.id_alert = a.id_alert

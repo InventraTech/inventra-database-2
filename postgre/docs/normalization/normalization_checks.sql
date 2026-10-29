@@ -83,6 +83,22 @@ JOIN tb_stock_batch sb ON sb.id_batch = a.id_batch
 UNION ALL
 
 -- ---------------------------------------------------
+-- R5. Leitura de alerta em dois modelos: is_read (antigo) e tb_alert_read (por pessoa).
+--     Não é erro ter os dois; a consulta mostra quantos alertas usam só o modelo antigo.
+-- ---------------------------------------------------
+
+SELECT
+    'R5 alertas lidos só pelo is_read (informativo)',
+    COUNT(*),
+    COUNT(*) FILTER (
+        WHERE a.is_read
+          AND NOT EXISTS (SELECT 1 FROM tb_alert_read ar WHERE ar.id_alert = a.id_alert)
+    )
+FROM tb_alert a
+
+UNION ALL
+
+-- ---------------------------------------------------
 -- Status derivado: lote ativo nunca fica com saldo zero (fn_update_batch_status)
 -- ---------------------------------------------------
 

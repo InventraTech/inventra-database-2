@@ -108,10 +108,11 @@ FROM tb_alert a
 JOIN tb_kitchen k ON k.id_kitchen = a.id_kitchen
 LEFT JOIN tb_product p ON p.id_product = a.id_product
 LEFT JOIN tb_stock_batch sb ON sb.id_batch = a.id_batch
-WHERE NOT EXISTS (
-    SELECT 1 FROM tb_alert_read ar
-    WHERE ar.id_alert = a.id_alert
-);
+WHERE a.is_read = false
+  AND NOT EXISTS (
+      SELECT 1 FROM tb_alert_read ar
+      WHERE ar.id_alert = a.id_alert
+  );
 
 CREATE VIEW vw_stock_value_by_category AS
 SELECT
@@ -342,10 +343,11 @@ LEFT JOIN (
 LEFT JOIN (
     SELECT a.id_kitchen, COUNT(*) AS active_alert_count
     FROM tb_alert a
-    WHERE NOT EXISTS (
-        SELECT 1 FROM tb_alert_read ar
-        WHERE ar.id_alert = a.id_alert
-    )
+    WHERE a.is_read = false
+      AND NOT EXISTS (
+          SELECT 1 FROM tb_alert_read ar
+          WHERE ar.id_alert = a.id_alert
+      )
     GROUP BY a.id_kitchen
 ) alerts ON alerts.id_kitchen = k.id_kitchen
 LEFT JOIN (
