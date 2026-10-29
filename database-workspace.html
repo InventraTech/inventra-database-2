@@ -404,6 +404,7 @@ a.rich{font-family:var(--mono);font-size:.92em;color:var(--brand-ink);text-decor
 .er-type{font:400 11px var(--mono);fill:var(--faint)}
 .er-key{font:600 9.5px var(--mono);fill:var(--gold)}
 .er-key.fk{fill:var(--brand)}
+.er-nn{font:500 8.5px var(--mono);fill:var(--faint)}
 .er-rowbg{fill:transparent}
 .er-more{font:400 11.5px var(--font);fill:var(--faint);font-style:italic}
 .er-edge{fill:none;stroke:var(--er-edge);stroke-width:1.4;transition:opacity .15s}
@@ -1808,7 +1809,8 @@ const ER_PREF = ['tb_profile', 'tb_user', 'tb_kitchen', 'tb_category', 'tb_measu
 const ER = { k: 1, tx: 30, ty: 30, mode: store.get('ws-er-mode') || 'full', sel: null, hidden: new Set(), nodes: new Map(), edges: [] };
 function pageModel(params) {
   crumbs([['PostgreSQL', '#/pg/tables'], ['Modelagem']]);
-  return head({ kicker: icon('model') + ' Modelagem física', title: 'Modelagem', desc: 'Diagrama entidade-relacionamento gerado do schema real: arraste as tabelas, use a roda do mouse para zoom e clique numa tabela para ver suas ligações.' }) +
+  return head({ kicker: icon('model') + ' Modelagem física', title: 'Modelagem', desc: 'Diagrama entidade-relacionamento gerado do schema real: arraste as tabelas, use a roda do mouse para zoom e clique numa tabela para ver suas ligações.',
+    actions: `<button class="btn" type="button" id="er-png">${icon('download')}Exportar PNG</button>` }) +
   `<div class="er-shell"><div class="er-stage" id="er-stage">
     <svg class="er-svg" id="er" role="img" aria-label="Diagrama entidade-relacionamento do PostgreSQL">
       <defs>
@@ -1838,7 +1840,7 @@ function pageModel(params) {
 }
 function erRows(t) {
   const pk = pkCols(t), fk = fkCols(t);
-  let cols = t.columns.map(c => ({ name: c.name, type: shortType(c.type), pk: pk.has(c.name), fk: fk.has(c.name) }));
+  let cols = t.columns.map(c => ({ name: c.name, type: shortType(c.type), nn: !c.nullable, pk: pk.has(c.name), fk: fk.has(c.name) }));
   if (ER.mode === 'names') return { cols: [], more: 0 };
   if (ER.mode === 'keys') cols = cols.filter(c => c.pk || c.fk);
   let more = 0;
@@ -1852,19 +1854,123 @@ function erBuild() {
   CONS.filter(c => c.type === 'f').forEach(c => ER.edges.push({ a: c.table, b: c.ref_table, ca: (c.columns || [])[0], cb: (c.ref_columns || [])[0], name: c.name }));
   PG.tables.filter(t => t.parent).forEach(t => ER.edges.push({ a: t.name, b: t.parent, inh: true, name: 'INHERITS' }));
 }
+const erPosKey = () => 'ws-er-pos2-' + ER.mode;
+/* Layout em camadas (estilo Sugiyama): quem é referenciado fica à esquerda e quem referencia à direita.
+   A ordem dentro de cada camada minimiza cruzamentos (baricentro) e as setas que atravessam camadas
+   ganham pontos de passagem nos vãos entre as tabelas, em vez de cruzar por cima delas. */
 function erLayout() {
-  const rank = n => { const i = ER_PREF.indexOf(n); return i < 0 ? 999 : i; };
-  const MAXH = ER.mode === 'names' ? 520 : 1150;
-  let x = 0;
-  DOMAIN_ORDER.forEach(d => {
-    const ts = PG.tables.filter(t => (t.domain || 'UNCLASSIFIED') === d).sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name));
-    if (!ts.length) return;
-    let y = 0, colX = x;
-    ts.forEach(t => { const n = ER.nodes.get(t.name); if (y > 0 && y + n.h > MAXH) { colX += ER_W + 60; y = 0; } n.x = colX; n.y = y; y += n.h + (ER.mode === 'names' ? 26 : 44); });
-    x = colX + ER_W + 140;
+  const GAP = ER.mode === 'names' ? 26 : 44, LAYER_GAP = 120, DUMMY_H = 16, DUMMY_GAP = 18;
+  const nodeOf = n => ER.nodes.get(n);
+  const dom = n => { const i = DOMAIN_ORDER.indexOf(nodeOf(n).t.domain || 'UNCLASSIFIED'); return i < 0 ? 99 : i; };
+  const pref = n => { const i = ER_PREF.indexOf(n); return i < 0 ? 999 : i; };
+  const names = [...ER.nodes.keys()].sort((a, b) => dom(a) - dom(b) || pref(a) - pref(b) || a.localeCompare(b));
+  const par = new Map(names.map(n => [n, []])), chi = new Map(names.map(n => [n, []])), pairs = new Map();
+  ER.edges.forEach(e => { const k = e.a + '|' + e.b; if (e.a !== e.b && !pairs.has(k)) { pairs.set(k, [e.a, e.b]); par.get(e.a).push(e.b); chi.get(e.b).push(e.a); } });
+
+  // camadas: caminho mais longo a partir das tabelas sem FK; ciclos são ignorados
+  const layer = new Map(), state = new Map();
+  const visit = n => {
+    if (state.get(n) === 2) return layer.get(n);
+    state.set(n, 1); let l = 0;
+    par.get(n).forEach(p => { if (state.get(p) !== 1) l = Math.max(l, visit(p) + 1); });
+    state.set(n, 2); layer.set(n, l); return l;
+  };
+  names.forEach(visit);
+  // tabelas-base ficam coladas à primeira tabela que as usa, para não gerar setas longas à toa
+  names.forEach(n => { if (!par.get(n).length && chi.get(n).length) layer.set(n, Math.max(0, Math.min(...chi.get(n).map(c => layer.get(c))) - 1)); });
+
+  // componentes conexos são diagramados separados e depois empacotados
+  const root = new Map(names.map(n => [n, n]));
+  const find = n => { while (root.get(n) !== n) { root.set(n, root.get(root.get(n))); n = root.get(n); } return n; };
+  pairs.forEach(([c, p]) => root.set(find(c), find(p)));
+  const comps = new Map(); names.forEach(n => { const r = find(n); if (!comps.has(r)) comps.set(r, []); comps.get(r).push(n); });
+
+  const layoutComp = members => {
+    const minL = Math.min(...members.map(n => layer.get(n)));
+    const rec = new Map(members.map(n => [n, { node: nodeOf(n), layer: layer.get(n) - minL, h: nodeOf(n).h }]));
+    const links = [], info = new Map();
+    pairs.forEach(([c, p], key) => {
+      if (!rec.has(c)) return;
+      const rc = rec.get(c), rp = rec.get(p);
+      if (rc.layer === rp.layer) return;
+      const lo = rc.layer < rp.layer ? rc : rp, hi = lo === rc ? rp : rc, chain = [lo];
+      for (let l = lo.layer + 1; l < hi.layer; l++) chain.push({ dummy: true, layer: l, h: DUMMY_H });
+      chain.push(hi);
+      for (let i = 1; i < chain.length; i++) links.push([chain[i - 1], chain[i]]);
+      info.set(key, { dummies: chain.slice(1, -1), aLeft: rc.layer < rp.layer });
+    });
+    const all = [...rec.values(), ...[...info.values()].flatMap(i => i.dummies)];
+    all.forEach(n => { n.up = []; n.dn = []; });
+    links.forEach(([u, v]) => { u.dn.push(v); v.up.push(u); });
+    const L = Math.max(...all.map(n => n.layer)) + 1;
+    const layers = Array.from({ length: L }, () => []);
+    rec.forEach(r => layers[r.layer].push(r));
+    info.forEach(i => i.dummies.forEach(d => layers[d.layer].push(d)));
+
+    // ordem dentro das camadas: varreduras de baricentro, guardando a melhor
+    const setPos = () => layers.forEach(ly => ly.forEach((n, i) => { n.i = i; }));
+    const crossings = () => {
+      let c = 0;
+      for (let k = 0; k < L - 1; k++) {
+        const ls = links.filter(([u]) => u.layer === k);
+        for (let a = 0; a < ls.length; a++) for (let b = a + 1; b < ls.length; b++) if ((ls[a][0].i - ls[b][0].i) * (ls[a][1].i - ls[b][1].i) < 0) c++;
+      }
+      return c;
+    };
+    const seq = down => down ? [...layers.keys()].slice(1) : [...layers.keys()].slice(0, -1).reverse();
+    const sweep = down => seq(down).forEach(k => {
+      const ly = layers[k];
+      ly.forEach(n => { const nb = down ? n.up : n.dn; n.b = nb.length ? nb.reduce((s, x) => s + x.i, 0) / nb.length : n.i; });
+      ly.sort((a, b) => a.b - b.b || a.i - b.i); ly.forEach((n, i) => { n.i = i; });
+    });
+    setPos(); let best = crossings(), snap = layers.map(l => [...l]);
+    for (let it = 0; it < 24; it++) { sweep(it % 2 === 0); const c = crossings(); if (c < best) { best = c; snap = layers.map(l => [...l]); } }
+    snap.forEach((ly, k) => { layers[k] = ly; }); setPos();
+
+    // posição vertical: cada tabela tenta ficar na altura média dos vizinhos, sem sobrepor (regressão isotônica)
+    const gap = (u, v) => (u.dummy || v.dummy) ? DUMMY_GAP : GAP;
+    const centre = n => n.y + n.h / 2;
+    layers.forEach(ly => { let y = 0; ly.forEach((n, i) => { if (i) y += gap(ly[i - 1], n); n.y = y; y += n.h; }); });
+    const place = (ly, want) => {
+      const o = []; let acc = 0;
+      ly.forEach((n, i) => { if (i) acc += gap(ly[i - 1], n); o.push(acc); acc += n.h; });
+      const blocks = [];
+      ly.forEach((n, i) => {
+        blocks.push({ s: want(n) - o[i], c: 1 });
+        while (blocks.length > 1 && blocks[blocks.length - 2].s / blocks[blocks.length - 2].c > blocks[blocks.length - 1].s / blocks[blocks.length - 1].c) { const b = blocks.pop(), a = blocks[blocks.length - 1]; a.s += b.s; a.c += b.c; }
+      });
+      let i = 0; blocks.forEach(b => { const m = b.s / b.c; for (let j = 0; j < b.c; j++, i++) ly[i].y = o[i] + m; });
+    };
+    for (let it = 0; it < 12; it++) {
+      const down = it % 2 === 0;
+      seq(down).forEach(k => place(layers[k], n => { const nb = down ? n.up : n.dn; return nb.length ? nb.reduce((s, x) => s + centre(x), 0) / nb.length - n.h / 2 : n.y; }));
+    }
+    const minY = Math.min(...all.map(n => n.y)), maxY = Math.max(...all.map(n => n.y + n.h));
+    const colX = k => k * (ER_W + LAYER_GAP);
+    rec.forEach(r => { r.node.x = colX(r.layer); r.node.y = r.y - minY; });
+    info.forEach(i => { i.pts = i.dummies.map(d => ({ x: colX(d.layer) + ER_W / 2, y: d.y - minY + d.h / 2 })); });
+    return { w: L * ER_W + (L - 1) * LAYER_GAP, h: maxY - minY, nodes: [...rec.values()].map(r => r.node), info };
+  };
+
+  // empacota: o maior componente no topo; os menores (e tabelas soltas) em fileiras abaixo
+  const laid = [...comps.values()].map(layoutComp).sort((a, b) => b.nodes.length - a.nodes.length || b.h - a.h);
+  const area = laid.reduce((s, c) => s + (c.w + 90) * (c.h + 70), 0);
+  const rowW = Math.max(laid[0].w, Math.sqrt(area * 1.8)); let x = 0, y = 0, rowH = 0;
+  laid.forEach((c, i) => {
+    if (i && x + c.w > rowW) { x = 0; y += rowH + 80; rowH = 0; }
+    c.nodes.forEach(n => { n.x += x; n.y += y; });
+    c.info.forEach(v => v.pts.forEach(p => { p.x += x; p.y += y; }));
+    x += c.w + 90; rowH = Math.max(rowH, c.h);
   });
-  const saved = JSON.parse(store.get('ws-er-pos-' + ER.mode) || '{}');
-  Object.entries(saved).forEach(([k, p]) => { const n = ER.nodes.get(k); if (n) { n.x = p[0]; n.y = p[1]; } });
+  const routes = new Map(); laid.forEach(c => c.info.forEach((v, k) => routes.set(k, v)));
+  ER.edges.forEach(e => { const r = routes.get(e.a + '|' + e.b); e.via = r ? r.pts : null; e.aLeft = !!r && r.aLeft; e.free = false; });
+
+  // posições arrastadas pelo usuário valem mais; as setas dessas tabelas voltam à curva simples
+  const saved = JSON.parse(store.get(erPosKey()) || '{}');
+  Object.entries(saved).forEach(([k, p]) => {
+    const n = ER.nodes.get(k);
+    if (n && (n.x !== p[0] || n.y !== p[1])) { n.x = p[0]; n.y = p[1]; ER.edges.forEach(e => { if (e.a === k || e.b === k) e.free = true; }); }
+  });
 }
 function erRowY(n, col) {
   const i = col ? n.rows.findIndex(r => r.name === col) : -1;
@@ -1872,6 +1978,15 @@ function erRowY(n, col) {
 }
 function erPath(e) {
   const a = ER.nodes.get(e.a), b = ER.nodes.get(e.b);
+  if (e.via && !e.free) {
+    // rota do layout: da borda de uma tabela à outra, passando pelos vãos reservados nas camadas do meio
+    const l = e.aLeft ? a : b, r = e.aLeft ? b : a;
+    const pts = [{ x: l.x + ER_W, y: erRowY(l, e.aLeft ? e.ca : e.cb) }, ...e.via, { x: r.x, y: erRowY(r, e.aLeft ? e.cb : e.ca) }];
+    if (!e.aLeft) pts.reverse();
+    let d = `M${pts[0].x},${pts[0].y}`;
+    for (let i = 1; i < pts.length; i++) { const p = pts[i - 1], q = pts[i], k = (q.x - p.x) / 2; d += ` C${p.x + k},${p.y} ${q.x - k},${q.y} ${q.x},${q.y}`; }
+    return d;
+  }
   const ay = erRowY(a, e.ca), by = erRowY(b, e.cb);
   const aR = a.x + ER_W, bR = b.x + ER_W; let x1, x2, c1, c2;
   if (aR + 24 < b.x) { x1 = aR; x2 = b.x; const d = Math.max(40, (x2 - x1) / 2); c1 = x1 + d; c2 = x2 - d; }
@@ -1888,7 +2003,7 @@ function erNodeSvg(n) {
     <circle cx="17" cy="${ER_HEAD / 2}" r="4.5" fill="${color}"/>
     <text class="er-title" x="30" y="25">${esc(trunc(t.name, 26))}</text><text class="er-count" x="${ER_W - 12}" y="25" text-anchor="end">${t.columns.length}</text>`;
   n.rows.forEach((c, i) => {
-    s += `<g class="er-row${c.pk ? ' pk' : ''}${c.fk ? ' fk' : ''}" transform="translate(0,${ER_HEAD + i * ER_ROW})"><rect class="er-rowbg" x="1" width="${ER_W - 2}" height="${ER_ROW}"/>${c.pk ? '<text class="er-key" x="10" y="16">PK</text>' : c.fk ? '<text class="er-key fk" x="10" y="16">FK</text>' : ''}<text class="er-col" x="34" y="16">${esc(trunc(c.name, 22))}</text><text class="er-type" x="${ER_W - 12}" y="16" text-anchor="end">${esc(trunc(c.type, 14))}</text></g>`;
+    s += `<g class="er-row${c.pk ? ' pk' : ''}${c.fk ? ' fk' : ''}" transform="translate(0,${ER_HEAD + i * ER_ROW})"><rect class="er-rowbg" x="1" width="${ER_W - 2}" height="${ER_ROW}"/>${c.pk ? '<text class="er-key" x="10" y="16">PK</text>' : c.fk ? '<text class="er-key fk" x="10" y="16">FK</text>' : ''}${c.nn ? '<text class="er-nn" x="27" y="16">NN</text>' : ''}<text class="er-col" x="46" y="16">${esc(trunc(c.name, 22))}</text><text class="er-type" x="${ER_W - 12}" y="16" text-anchor="end">${esc(trunc(c.type, 14))}</text></g>`;
   });
   if (n.more) s += `<text class="er-more" x="34" y="${ER_HEAD + n.rows.length * ER_ROW + 16}">+ ${n.more} colunas</text>`;
   return s + '</g>';
@@ -1938,7 +2053,7 @@ function erPanel() {
     el.innerHTML = `<div class="card"><h2 style="font-size:16px">Domínios</h2><p class="small muted" style="margin:4px 0 10px">Clique para mostrar ou esconder.</p>${doms.map(d => `<button class="legend-row${ER.hidden.has(d) ? ' off' : ''}" type="button" data-dom="${d}"><span class="sw" style="--c:${DOMAIN[d].color}"></span>${DOMAIN[d].label}<span class="n">${PG.tables.filter(t => (t.domain || 'UNCLASSIFIED') === d).length}</span></button>`).join('')}</div>
     <div class="card"><h2 style="font-size:16px">Como ler</h2><ul class="small muted" style="padding-left:18px;margin:10px 0 0;display:flex;flex-direction:column;gap:6px">
       <li>A seta sai da coluna <b>FK</b> e aponta para a tabela referenciada.</li><li>Linha tracejada é <b>herança</b> (tabelas <code class="ic">tb_log_*</code> herdam de <code class="ic">tb_log_base</code>).</li>
-      <li><b>PK</b> em dourado, <b>FK</b> em roxo. O número no cabeçalho é o total de colunas.</li><li>Arraste para organizar; o layout fica salvo neste navegador.</li></ul></div>
+      <li><b>PK</b> em dourado, <b>FK</b> em roxo. O número no cabeçalho é o total de colunas.</li><li><b>NN</b> marca coluna <b>NOT NULL</b>; sem marca, a coluna aceita nulo.</li><li>Arraste para organizar; o layout fica salvo neste navegador.</li></ul></div>
     <div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><span class="v">${PG.tables.length}</span><span class="l">tabelas</span></div><div class="stat"><span class="v">${ER.edges.filter(e => !e.inh).length}</span><span class="l">FKs</span></div></div>`;
     $$('.legend-row', el).forEach(b => b.addEventListener('click', () => { const d = b.dataset.dom; ER.hidden.has(d) ? ER.hidden.delete(d) : ER.hidden.add(d); erDraw(); erPanel(); }));
     return;
@@ -1961,8 +2076,51 @@ function erFocus(name) {
   if (ER.hidden.has(d)) { ER.hidden.delete(d); erDraw(); }
   erSelect(name); erFit([...erNeighbors(name)]);
 }
+/* Exporta o diagrama inteiro (não só o trecho visível) como PNG: monta um SVG autônomo
+   com as cores já resolvidas do tema atual e o rasteriza num canvas. */
+function erExportPng() {
+  const ns = [...ER.nodes.values()].filter(n => !ER.hidden.has(n.t.domain || 'UNCLASSIFIED'));
+  if (!ns.length) { toast('Nenhuma tabela visível para exportar'); return; }
+  const cs = getComputedStyle(document.documentElement), v = name => cs.getPropertyValue(name).trim();
+  const pad = 48, top = 44;
+  const minX = Math.min(...ns.map(n => n.x)) - pad, minY = Math.min(...ns.map(n => n.y)) - pad - top;
+  const w = Math.max(...ns.map(n => n.x + ER_W)) + pad - minX, h = Math.max(...ns.map(n => n.y + n.h)) + pad - minY;
+  const scale = Math.min(2, 8000 / Math.max(w, h));
+  const edges = ER.edges.filter(e => !ER.hidden.has(ER.nodes.get(e.a).t.domain || 'UNCLASSIFIED') && !ER.hidden.has(ER.nodes.get(e.b).t.domain || 'UNCLASSIFIED'));
+  const font = "'Outfit',system-ui,'Segoe UI',Roboto,sans-serif", mono = "'Fira Code',ui-monospace,Consolas,Menlo,monospace";
+  const css = `.er-box{fill:${v('--er-box')};stroke:${v('--line-2')};stroke-width:1}.er-shadow{fill:#16112A;opacity:.035}.er-headbg{fill:${v('--er-head')}}.er-sep{stroke:${v('--line')}}
+.er-title{font:600 13.5px ${font};fill:${v('--ink')}}.er-count{font:500 11px ${mono};fill:${v('--faint')}}.er-col{font:400 12px ${mono};fill:${v('--ink')}}.er-row.pk .er-col{font-weight:600}
+.er-type{font:400 11px ${mono};fill:${v('--faint')}}.er-key{font:600 9.5px ${mono};fill:${v('--gold')}}.er-key.fk{fill:${v('--brand')}}.er-nn{font:500 8.5px ${mono};fill:${v('--faint')}}.er-rowbg{fill:transparent}.er-more{font:italic 400 11.5px ${font};fill:${v('--faint')}}
+.er-edge{fill:none;stroke:${v('--er-edge')};stroke-width:1.4}.er-edge.inh{stroke-dasharray:5 5}.er-arrow{fill:${v('--er-edge')}}.er-gridpt{fill:${v('--er-grid')}}`;
+  const stamp = new Date().toLocaleDateString('pt-BR');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${minX} ${minY} ${w} ${h}"><style>${css}</style>
+<defs><pattern id="er-grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle class="er-gridpt" cx="1" cy="1" r="1"/></pattern>
+<marker id="er-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="er-arrow" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="er-dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6"><circle class="er-arrow" cx="5" cy="5" r="4"/></marker></defs>
+<rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="${v('--er-bg')}"/><rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="url(#er-grid)"/>
+<text x="${minX + pad}" y="${minY + pad - 6}" style="font:700 20px ${font};fill:${v('--ink')}">Inventra · PostgreSQL</text>
+<text x="${minX + pad}" y="${minY + pad + 14}" style="font:400 12px ${font};fill:${v('--faint')}">Modelagem física · ${ns.length} tabelas · ${edges.filter(e => !e.inh).length} FKs · ${stamp}</text>
+<g>${edges.map(e => `<path class="er-edge${e.inh ? ' inh' : ''}" d="${erPath(e)}" marker-end="url(#er-arrow)" marker-start="url(#er-dot)"/>`).join('')}</g>
+<g>${ns.map(erNodeSvg).join('')}</g></svg>`;
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+    const ctx = c.getContext('2d'); ctx.scale(scale, scale); ctx.drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    c.toBlob(b => {
+      if (!b) { toast('Não foi possível gerar o PNG'); return; }
+      const u = URL.createObjectURL(b), a = document.createElement('a');
+      a.href = u; a.download = 'inventra-modelagem-postgresql.png'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(u), 1000); toast('PNG exportado');
+    }, 'image/png');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('Não foi possível gerar o PNG'); };
+  img.src = url;
+}
 function initModel(params) {
   erBuild(); erLayout(); erDraw(); erPanel();
+  $('#er-png').addEventListener('click', erExportPng);
   const svg = $('#er'); erFit();
   if (params.get('focus')) erFocus(params.get('focus'));
   const world = e => { const r = svg.getBoundingClientRect(); return { x: (e.clientX - r.left - ER.tx) / ER.k, y: (e.clientY - r.top - ER.ty) / ER.k }; };
@@ -1978,14 +2136,14 @@ function initModel(params) {
     if (!drag) return;
     if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 4) return;
     drag.moved = true;
-    if (drag.type === 'node') { const p = world(e); drag.n.x = Math.round(p.x - drag.dx); drag.n.y = Math.round(p.y - drag.dy); drag.g.setAttribute('transform', `translate(${drag.n.x},${drag.n.y})`); erDrawEdges(); }
+    if (drag.type === 'node') { const p = world(e); drag.n.x = Math.round(p.x - drag.dx); drag.n.y = Math.round(p.y - drag.dy); drag.g.setAttribute('transform', `translate(${drag.n.x},${drag.n.y})`); ER.edges.forEach(e => { if (e.a === drag.n.t.name || e.b === drag.n.t.name) e.free = true; }); erDrawEdges(); }
     else { ER.tx = drag.tx + e.clientX - drag.sx; ER.ty = drag.ty + e.clientY - drag.sy; erApply(); }
   });
   const end = () => {
     if (!drag) return;
     svg.classList.remove('panning');
     if (drag.type === 'node') {
-      if (drag.moved) { const pos = {}; ER.nodes.forEach((n, k) => { pos[k] = [n.x, n.y]; }); store.set('ws-er-pos-' + ER.mode, JSON.stringify(pos)); }
+      if (drag.moved) { const pos = {}; ER.nodes.forEach((n, k) => { pos[k] = [n.x, n.y]; }); store.set(erPosKey(), JSON.stringify(pos)); }
       else erSelect(ER.sel === drag.n.t.name ? null : drag.n.t.name);
     } else if (!drag.moved) erSelect(null);
     drag = null;
@@ -2002,7 +2160,7 @@ function initModel(params) {
   $('#er-in').addEventListener('click', () => zoomBy(1.2));
   $('#er-out').addEventListener('click', () => zoomBy(1 / 1.2));
   $('#er-fit').addEventListener('click', () => erFit());
-  $('#er-reset').addEventListener('click', () => { store.del('ws-er-pos-' + ER.mode); erBuild(); erLayout(); erDraw(); erFit(); toast('Layout reorganizado'); });
+  $('#er-reset').addEventListener('click', () => { store.del(erPosKey()); erBuild(); erLayout(); erDraw(); erFit(); toast('Layout reorganizado'); });
   $('#er-full').addEventListener('click', () => { const st = $('#er-stage'); if (document.fullscreenElement) document.exitFullscreen(); else if (st.requestFullscreen) st.requestFullscreen().then(() => setTimeout(() => erFit(), 120)); });
   $$('[data-mode]').forEach(b => b.addEventListener('click', () => {
     ER.mode = b.dataset.mode; store.set('ws-er-mode', ER.mode);

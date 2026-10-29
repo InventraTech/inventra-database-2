@@ -45,7 +45,7 @@ Para navegar por tudo isso, abra o **[Database Workspace](database-workspace.htm
 
 [`database-workspace.html`](database-workspace.html) é a documentação navegável de todos os bancos, num único arquivo que abre direto no navegador (sem servidor nem instalação). No `main` ele é publicado em [inventratech.github.io/inventra-database-2](https://inventratech.github.io/inventra-database-2/) por [`pages.yml`](.github/workflows/pages.yml), que o regenera a partir do schema real a cada deploy:
 
-- **PostgreSQL:** cada tabela com colunas, tipos, chaves, descrição, regra de negócio, nível de acesso e dado pessoal (LGPD) do catálogo; relacionamentos, índices, triggers, quem usa e o DDL. Diagrama ER interativo, dicionário de dados exportável em CSV, views, functions, procedures, triggers, índices, constraints e as migrations em ordem.
+- **PostgreSQL:** cada tabela com colunas, tipos, chaves, descrição, regra de negócio, nível de acesso e dado pessoal (LGPD) do catálogo; relacionamentos, índices, triggers, quem usa e o DDL. Diagrama ER interativo (em camadas, com PK, FK e NOT NULL marcados e exportável em PNG), dicionário de dados exportável em CSV, views, functions, procedures, triggers, índices, constraints e as migrations em ordem.
 - **MongoDB, Redis e Neo4j:** contrato das coleções com documento de exemplo, keyspace com os comandos de cada operação e a cobertura de fornecedores no grafo (modelo, ranking de exemplo, Cypher e a especificação completa).
 - **Repositório:** todos os scripts com realce de sintaxe e links para os objetos, os documentos `.md` renderizados e o histórico de commits.
 - **Busca global** (`Ctrl K` ou `/`) por tabela, coluna, objeto, chave, arquivo e trecho de código; tema claro e escuro.
