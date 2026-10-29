@@ -77,6 +77,11 @@ ADD CONSTRAINT fk_requisition_approver_user
 FOREIGN KEY (id_approver_user) REFERENCES tb_user (id_user)
 ON UPDATE NO ACTION ON DELETE NO ACTION;
 
+ALTER TABLE tb_requisition
+ADD CONSTRAINT fk_requisition_prelist
+FOREIGN KEY (id_pre_list) REFERENCES tb_pre_list (id_pre_list)
+ON UPDATE NO ACTION ON DELETE NO ACTION;
+
 ALTER TABLE tb_requisition_item
 ADD CONSTRAINT fk_requisitionitem_requisition
 FOREIGN KEY (id_requisition) REFERENCES tb_requisition (id_requisition)
@@ -193,6 +198,10 @@ CHECK (status IN ('DRAFT', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'CANCELLED'))
 ALTER TABLE tb_requisition
 ADD CONSTRAINT ck_requisition_type 
 CHECK (requisition_type IN ('PURCHASE', 'TRANSFER', 'CONSUMPTION'));
+
+ALTER TABLE tb_requisition
+ADD CONSTRAINT ck_requisition_prelist_purchase
+CHECK (id_pre_list IS NULL OR requisition_type = 'PURCHASE');
 
 ALTER TABLE tb_inventory
 ADD CONSTRAINT ck_inventory_status 

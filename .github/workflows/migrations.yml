@@ -32,5 +32,6 @@ jobs:
       - run: psql -X -q -v ON_ERROR_STOP=1 -f postgre/tests/check_ui_click_counter.sql
       - run: psql -X -q -v ON_ERROR_STOP=1 -f postgre/tests/check_category_hierarchy.sql
       - run: psql -X -q -v ON_ERROR_STOP=1 -f postgre/tests/check_product_supplier_updated_at.sql
+      - run: psql -X -q -v ON_ERROR_STOP=1 -f postgre/tests/check_requisition_pre_list.sql
       - run: bash postgre/tests/check_backup_restore.sh
       - run: bash postgre/tests/check_dictionary_sync.sh

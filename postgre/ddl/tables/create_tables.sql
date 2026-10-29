@@ -125,6 +125,7 @@ CREATE TABLE tb_requisition (
 	id_approver_user UUID,
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	approved_at TIMESTAMP,
+	id_pre_list INTEGER,
 	PRIMARY KEY (id_requisition)
 );
 

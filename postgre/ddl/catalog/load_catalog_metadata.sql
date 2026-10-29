@@ -70,7 +70,7 @@ FROM (VALUES
 	 'INTERNAL', 'Operações'),
 	('tb_requisition', 'TRANSACTION',
 	 'Requisições de compra, transferência ou consumo.',
-	 'Fluxo DRAFT -> UNDER_REVIEW -> APPROVED/REJECTED; CANCELLED a partir de DRAFT, UNDER_REVIEW ou APPROVED (estorna o estoque). Alterações auditadas em tb_log_requisition.',
+	 'Fluxo DRAFT -> UNDER_REVIEW -> APPROVED/REJECTED; CANCELLED a partir de DRAFT, UNDER_REVIEW ou APPROVED (estorna o estoque). Compra gerada de uma pré-lista aponta para ela (id_pre_list): só PURCHASE, da cozinha da pré-lista (trg_requisition_prelist_consistency) e no máximo uma ativa por pré-lista. Alterações auditadas em tb_log_requisition.',
 	 'INTERNAL', 'Operações'),
 	('tb_requisition_item', 'TRANSACTION',
 	 'Itens (produto e quantidade) de cada requisição.',
@@ -222,7 +222,7 @@ FROM (VALUES
 	-- tb_requisition
 	('tb_requisition', 'id_requisition', 'Identificador da requisição.', NULL, NULL, false),
 	('tb_requisition', 'requisition_type', 'Tipo da requisição.', 'PURCHASE, TRANSFER ou CONSUMPTION (ck_requisition_type).', NULL, false),
-	('tb_requisition', 'origin', 'Canal que originou a requisição (ex.: MOBILE_APP, SYSTEM).', 'Texto livre, sem CHECK.', NULL, false),
+	('tb_requisition', 'origin', 'Canal ou origem da requisição (ex.: MOBILE_APP, SYSTEM, "Pré-lista dd/MM").', 'Texto livre, sem CHECK. Só descreve: a pré-lista de origem é identificada por id_pre_list, nunca por este texto.', NULL, false),
 	('tb_requisition', 'status', 'Situação da requisição.', 'DRAFT, UNDER_REVIEW, APPROVED, REJECTED ou CANCELLED (ck_requisition_status).', NULL, false),
 	('tb_requisition', 'reason', 'Justificativa da requisição.', NULL, NULL, false),
 	('tb_requisition', 'id_kitchen', 'Cozinha solicitante.', NULL, NULL, false),
@@ -230,6 +230,7 @@ FROM (VALUES
 	('tb_requisition', 'id_approver_user', 'Usuário que aprovou ou rejeitou.', 'Preenchido só na decisão.', NULL, false),
 	('tb_requisition', 'created_at', 'Data e hora de abertura.', NULL, NULL, false),
 	('tb_requisition', 'approved_at', 'Data e hora da aprovação.', 'Preenchido por trg_requisition_approval ao mudar para APPROVED.', NULL, false),
+	('tb_requisition', 'id_pre_list', 'Pré-lista que originou a compra.', 'Opcional (FK fk_requisition_prelist). Nulo nas requisições que não vieram de pré-lista. Só em PURCHASE (ck_requisition_prelist_purchase) e na cozinha da pré-lista, quando ela tem cozinha (trg_requisition_prelist_consistency). A pré-lista está usada quando há requisição com status diferente de CANCELLED e REJECTED; uq_requisition_prelist_active permite no máximo uma. Cancelada ou recusada a compra, a pré-lista volta a ficar disponível.', NULL, false),
 	-- tb_requisition_item
 	('tb_requisition_item', 'id_requisition_item', 'Identificador do item.', NULL, NULL, false),
 	('tb_requisition_item', 'id_requisition', 'Requisição a que o item pertence.', NULL, NULL, false),
@@ -752,7 +753,7 @@ SELECT v.table_name, v.domain, v.description, v.business_rules, al.id_access_lev
 FROM (VALUES
 	('tb_pre_list', 'TRANSACTION',
 	 'Pré-listas de compra: cabeçalho com a data da lista e a cozinha.',
-	 'Uma pré-lista tem N itens (1:N) e pertence a uma cozinha (opcional). É intenção de compra: não mexe em estoque nem em requisições. A integração RPA grava aqui as listas do banco do 1º ano e usa id_source para não importar a mesma lista duas vezes.',
+	 'Uma pré-lista tem N itens (1:N) e pertence a uma cozinha (opcional). É intenção de compra: não mexe em estoque. Vira uma requisição de compra pela API (tb_requisition.id_pre_list) e está "usada" enquanto essa requisição não for CANCELLED nem REJECTED. A integração RPA grava aqui as listas do banco do 1º ano e usa id_source para não importar a mesma lista duas vezes.',
 	 'INTERNAL', 'Compras'),
 	('tb_pre_list_item', 'TRANSACTION',
 	 'Itens (produto, fornecedor e quantidade) de cada pré-lista.',

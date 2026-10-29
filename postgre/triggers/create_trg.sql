@@ -57,3 +57,10 @@ BEFORE UPDATE
 ON tb_product_supplier
 FOR EACH ROW
 EXECUTE FUNCTION fn_product_supplier_updated_at();
+
+-- só nas colunas da regra: mudar o status (aprovar, cancelar) não paga o custo da consulta
+CREATE TRIGGER trg_requisition_prelist_consistency
+BEFORE INSERT OR UPDATE OF id_pre_list, id_kitchen
+ON tb_requisition
+FOR EACH ROW
+EXECUTE FUNCTION fn_requisition_prelist_consistency();

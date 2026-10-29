@@ -50,6 +50,12 @@ DROP CONSTRAINT IF EXISTS fk_requisition_requester_user;
 ALTER TABLE tb_requisition
 DROP CONSTRAINT IF EXISTS fk_requisition_approver_user;
 
+ALTER TABLE tb_requisition
+DROP CONSTRAINT IF EXISTS fk_requisition_prelist;
+
+ALTER TABLE tb_requisition
+DROP CONSTRAINT IF EXISTS ck_requisition_prelist_purchase;
+
 ALTER TABLE tb_requisition_item
 DROP CONSTRAINT IF EXISTS fk_requisitionitem_requisition;
 

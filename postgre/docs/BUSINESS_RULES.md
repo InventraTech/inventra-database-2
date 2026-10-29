@@ -1,6 +1,6 @@
 # Regras de Negócio no Banco
 
-Functions, procedures e triggers que implementam as regras do Inventra direto no PostgreSQL. Definidos em `migrations/V002__business_rules.sql` (negócio) e `migrations/V003__audit_logs.sql` (auditoria), com as alterações de `V007` (movimentações), `V008` (alertas), `V009` (requisições) `V019` (hierarquia de categorias) e `V020` (data do vínculo produto–fornecedor).
+Functions, procedures e triggers que implementam as regras do Inventra direto no PostgreSQL. Definidos em `migrations/V002__business_rules.sql` (negócio) e `migrations/V003__audit_logs.sql` (auditoria), com as alterações de `V007` (movimentações), `V008` (alertas), `V009` (requisições), `V019` (hierarquia de categorias), `V020` (data do vínculo produto–fornecedor) e `V021` (compra × pré-lista).
 
 ## Functions de negócio
 
@@ -14,6 +14,7 @@ Arquivo: `functions/create_functions.sql`. São regras automáticas, disparadas 
 | `fn_product_supplier_updated_at` | `trg_product_supplier_updated_at` | Renova `updated_at` em todo UPDATE de `tb_product_supplier`; valor escrito à mão é sobrescrito (`V020`) |
 | `fn_alert_batch_consistency` | `trg_alert_batch_consistency` | Em alerta com lote, preenche produto e cozinha com os do lote e recusa valores diferentes |
 | `fn_requisition_approval` | `trg_requisition_approval` | Preenche `approved_at` quando o status muda para `APPROVED` |
+| `fn_requisition_prelist_consistency` | `trg_requisition_prelist_consistency` | Recusa compra ligada a uma pré-lista de outra cozinha; pré-lista sem cozinha aceita qualquer uma (`V021`) |
 | `fn_stock_alert` | `trg_stock_alert` | Cria alerta `STOCK` (`HIGH`) quando a soma dos lotes ativos e não vencidos fica **abaixo** do mínimo cadastrado; não duplica se já há um alerta `STOCK` aberto |
 | `fn_expiration_alert` | `trg_expiration_alert` | Cria alerta quando um lote já passou da validade; não duplica se já há um alerta `EXPIRATION` aberto |
 | `fn_check_category_cycle` | `trg_category_no_cycle` | Recusa a categoria-mãe que criaria um ciclo na hierarquia: sobe pelos ancestrais da nova mãe com CTE recursiva e barra se a própria categoria aparecer (`V019`) |
@@ -77,6 +78,7 @@ Arquivo: `triggers/create_trg.sql`.
 | `trg_product_supplier_updated_at` | `tb_product_supplier` | BEFORE UPDATE (qualquer coluna) | `fn_product_supplier_updated_at` |
 | `trg_alert_batch_consistency` | `tb_alert` | BEFORE INSERT/UPDATE de `id_batch`, `id_product`, `id_kitchen` | `fn_alert_batch_consistency` |
 | `trg_requisition_approval` | `tb_requisition` | BEFORE UPDATE de `status` | `fn_requisition_approval` |
+| `trg_requisition_prelist_consistency` | `tb_requisition` | BEFORE INSERT/UPDATE de `id_pre_list`, `id_kitchen` | `fn_requisition_prelist_consistency` |
 | `trg_stock_alert` | `tb_stock_batch` | AFTER INSERT/UPDATE de `current_quantity` | `fn_stock_alert` |
 | `trg_expiration_alert` | `tb_stock_batch` | AFTER INSERT/UPDATE de `expiration_date` | `fn_expiration_alert` |
 | `trg_category_no_cycle` | `tb_category` | BEFORE INSERT/UPDATE de `id_parent_category` | `fn_check_category_cycle` |
