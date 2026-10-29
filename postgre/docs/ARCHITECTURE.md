@@ -12,7 +12,7 @@ Visão de como o repositório é organizado e por que, mais as decisões de desi
 
 ```mermaid
 flowchart LR
-    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V020"]
+    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V021"]
     M -->|psql / CI| DB[("PostgreSQL")]
     M -->|cópia byte a byte| API["ms-inventra-api<br/>Flyway"]
     R["rollback/<br/>drop_*.sql"] -.->|reverte| DB
@@ -42,6 +42,7 @@ flowchart LR
 | `V018__pre_list_kitchen.sql` | `tb_pre_list.id_kitchen` (FK para `tb_kitchen`, opcional, com índice): cozinha da pré-lista, para filtrar as listas por cozinha |
 | `V019__category_hierarchy.sql` | Hierarquia de categorias (`tb_category.id_parent_category`, autorrelacionamento) com CTE recursiva: trava anti-ciclo `trg_category_no_cycle`, `fn_category_descendants`, `vw_category_tree`, `vw_category_stock_rollup` e `dim_category` (snowflake) |
 | `V020__product_supplier_updated_at.sql` | `tb_product_supplier.updated_at`, renovado em todo UPDATE por `trg_product_supplier_updated_at`: data da última gravação do vínculo produto–fornecedor, que define a ordem da lista de fornecedores do produto (do mais recente para o mais antigo) |
+| `V021__requisition_pre_list.sql` | `tb_requisition.id_pre_list` (FK para `tb_pre_list`, opcional, com índice), `uq_requisition_prelist_active`, `ck_requisition_prelist_purchase` e `trg_requisition_prelist_consistency`: a compra gerada de uma pré-lista aponta para ela, só `PURCHASE` e da cozinha da pré-lista, e o banco recusa uma segunda requisição ativa (nem `CANCELLED` nem `REJECTED`) da mesma pré-lista |
 | `rollback/drop_everything.sql` | Reversão completa |
 
 As pastas de dicionário não têm numeração porque não representam sequência; a ordem de execução é definida só por `migrations/`.
@@ -49,7 +50,7 @@ As pastas de dicionário não têm numeração porque não representam sequênci
 ## Convenções
 
 - **Fonte da verdade:** este repositório é o dono do schema. Toda mudança nasce aqui, na pasta de dicionário correspondente **e** em `migrations`.
-- **Integração com a API:** `ms-inventra-api` apenas copia `V001` a `V020` byte a byte para `src/main/resources/db/migration` e o Flyway aplica. Nunca se edita migration direto na API.
+- **Integração com a API:** `ms-inventra-api` apenas copia `V001` a `V021` byte a byte para `src/main/resources/db/migration` e o Flyway aplica. Nunca se edita migration direto na API.
 - **Imutabilidade:** migrations são idempotentes e numeradas em sequência (`V006`, `V007`…). Uma migration já aplicada em algum banco não deve ser alterada; mudanças novas entram em uma nova versão.
 - **Mensagens em português:** os `RAISE EXCEPTION` das functions e procedures estão em português de propósito, porque a API os repassa ao cliente no `detail` das respostas 409.
 - **Job diário:** `sp_expire_batches()` marca lotes vencidos como `EXPIRED` e gera os alertas correspondentes. É chamada diariamente pelo `BatchExpirationJob` da API. `sp_alert_expiring_batches(p_days)` avisa **antes** de vencer e deve ser chamada pelo mesmo job.
@@ -61,12 +62,12 @@ As pastas de dicionário não têm numeração porque não representam sequênci
 
 `tests/check_migrations.sh` roda no GitHub Actions (`.github/workflows/migrations.yml`, PostgreSQL 16) e cobre quatro passos:
 
-1. aplica `V001`…`V020` em banco limpo;
+1. aplica `V001`…`V021` em banco limpo;
 2. reaplica tudo (prova de idempotência);
 3. executa `rollback/drop_everything.sql`;
 4. reaplica do zero após o rollback.
 
-Depois, `tests/check_normalization_integrity.sql` confere as triggers que protegem as redundâncias controladas do modelo ([`NORMALIZATION.md`](normalization/NORMALIZATION.md)), numa transação desfeita no fim, `tests/check_daily_access.sql` faz o mesmo com o registro de acessos e as views de DAU, `tests/check_ui_click_counter.sql` com o contador de cliques ([`MONITORING.md`](MONITORING.md)) e `tests/check_category_hierarchy.sql` com a hierarquia de categorias (árvore, subárvore, soma pela árvore e as travas contra ciclo) e `tests/check_product_supplier_updated_at.sql` com a data e a ordem dos vínculos produto–fornecedor. Em seguida, `tests/check_backup_restore.sh` desfaz operações pela auditoria, gera um backup com `backup/backup.sh`, restaura num banco novo com `backup/restore.sh` e compara a contagem de linhas de cada tabela. Detalhes em [`BACKUP_AND_RECOVERY.md`](BACKUP_AND_RECOVERY.md).
+Depois, `tests/check_normalization_integrity.sql` confere as triggers que protegem as redundâncias controladas do modelo ([`NORMALIZATION.md`](normalization/NORMALIZATION.md)), numa transação desfeita no fim, `tests/check_daily_access.sql` faz o mesmo com o registro de acessos e as views de DAU, `tests/check_ui_click_counter.sql` com o contador de cliques ([`MONITORING.md`](MONITORING.md)) e `tests/check_category_hierarchy.sql` com a hierarquia de categorias (árvore, subárvore, soma pela árvore e as travas contra ciclo), `tests/check_product_supplier_updated_at.sql` com a data e a ordem dos vínculos produto–fornecedor e `tests/check_requisition_pre_list.sql` com a ligação da compra à pré-lista (uma só requisição ativa por pré-lista). Em seguida, `tests/check_backup_restore.sh` desfaz operações pela auditoria, gera um backup com `backup/backup.sh`, restaura num banco novo com `backup/restore.sh` e compara a contagem de linhas de cada tabela. Detalhes em [`BACKUP_AND_RECOVERY.md`](BACKUP_AND_RECOVERY.md).
 
 Por fim, `tests/check_dictionary_sync.sh` garante que o dicionário e as migrations não divergem. Ele monta um banco só com `migrations/V*.sql` e outro só com os arquivos do dicionário, e compara os dois com `tests/schema_fingerprint.sql`. A comparação cobre colunas, constraints, índices, views, rotinas, triggers, herança e o conteúdo do catálogo de dados, e não depende da ordem física das colunas. A lista `DICTIONARY` do script é a **ordem oficial de execução do dicionário**; arquivo novo que ficar fora dela faz o teste falhar.
 

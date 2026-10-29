@@ -316,3 +316,38 @@ BEGIN
 
 END;
 $$;
+
+-- Compra com pré-lista: a cozinha é a da pré-lista. Pré-lista sem cozinha aceita qualquer uma.
+CREATE FUNCTION fn_requisition_prelist_consistency()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS
+$$
+DECLARE
+    v_id_kitchen INTEGER;
+BEGIN
+
+    IF NEW.id_pre_list IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT id_kitchen
+    INTO v_id_kitchen
+    FROM tb_pre_list
+    WHERE id_pre_list = NEW.id_pre_list;
+
+    -- pré-lista inexistente: a FK fk_requisition_prelist recusa com a mensagem dela
+    IF NOT FOUND THEN
+        RETURN NEW;
+    END IF;
+
+    IF v_id_kitchen IS NOT NULL AND v_id_kitchen <> NEW.id_kitchen THEN
+        RAISE EXCEPTION
+            'A pré-lista % é da cozinha % e não pode virar compra da cozinha %.',
+            NEW.id_pre_list, v_id_kitchen, NEW.id_kitchen;
+    END IF;
+
+    RETURN NEW;
+
+END;
+$$;

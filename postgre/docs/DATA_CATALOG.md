@@ -124,7 +124,7 @@ CALL sp_sync_data_catalog();       -- só inclui o que falta
 CALL sp_sync_data_catalog(true);   -- inclui e remove o que saiu do schema
 ```
 
-A `V010` chama a procedure no final, e as migrations seguintes também (a `V011` acrescenta `tb_backup_history`, a `V013`, `tb_user_daily_access`, a `V014`, `tb_ui_click_counter`, com uma linha de catálogo por contador, a `V016`, `tb_pre_list` e `tb_pre_list_item`, a `V017`, a coluna `tb_pre_list.id_source`, a `V018`, a coluna `tb_pre_list.id_kitchen`, a `V019`, a coluna `tb_category.id_parent_category`, e a `V020`, a coluna `tb_product_supplier.updated_at`). Com a carga atual, ela inclui 0 tabelas e encontra 0 colunas sem descrição, o que prova que o catálogo cobre o schema inteiro: 33 tabelas e 488 colunas.
+A `V010` chama a procedure no final, e as migrations seguintes também (a `V011` acrescenta `tb_backup_history`, a `V013`, `tb_user_daily_access`, a `V014`, `tb_ui_click_counter`, com uma linha de catálogo por contador, a `V016`, `tb_pre_list` e `tb_pre_list_item`, a `V017`, a coluna `tb_pre_list.id_source`, a `V018`, a coluna `tb_pre_list.id_kitchen`, a `V019`, a coluna `tb_category.id_parent_category`, a `V020`, a coluna `tb_product_supplier.updated_at`, e a `V021`, a coluna `tb_requisition.id_pre_list`). Com a carga atual, ela inclui 0 tabelas e encontra 0 colunas sem descrição, o que prova que o catálogo cobre o schema inteiro: 33 tabelas e 489 colunas.
 
 Só entram tabelas com prefixo `tb_`, para ficarem de fora tabelas de ferramenta, como a `flyway_schema_history` que o Flyway cria no banco da API.
 

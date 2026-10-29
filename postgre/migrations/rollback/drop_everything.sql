@@ -1,5 +1,5 @@
 -- =====================================================
--- FULL TEARDOWN — reverses V001 through V020
+-- FULL TEARDOWN — reverses V001 through V021
 -- =====================================================
 -- WARNING: destructive and irreversible. Drops every table
 -- (and all data in them), view, function, procedure, trigger,
@@ -24,6 +24,10 @@
 -- ---------------------------------------------------
 -- PRE-LIST
 -- ---------------------------------------------------
+
+-- tb_requisition.id_pre_list (V021) aponta para tb_pre_list: a FK sai antes da tabela
+ALTER TABLE IF EXISTS tb_requisition
+DROP CONSTRAINT IF EXISTS fk_requisition_prelist;
 
 DROP TABLE IF EXISTS tb_pre_list_item;
 
@@ -186,6 +190,9 @@ ON tb_alert;
 DROP TRIGGER IF EXISTS trg_product_supplier_updated_at
 ON tb_product_supplier;
 
+DROP TRIGGER IF EXISTS trg_requisition_prelist_consistency
+ON tb_requisition;
+
 DROP TRIGGER IF EXISTS trg_category_no_cycle
 ON tb_category;
 
@@ -233,6 +240,8 @@ DROP FUNCTION IF EXISTS fn_log_alert();
 -- ---------------------------------------------------
 
 DROP FUNCTION IF EXISTS fn_product_supplier_updated_at();
+
+DROP FUNCTION IF EXISTS fn_requisition_prelist_consistency();
 
 DROP FUNCTION IF EXISTS fn_category_descendants(INTEGER);
 

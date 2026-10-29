@@ -71,6 +71,13 @@ ON tb_requisition (status);
 CREATE INDEX idx_requisition_created_at 
 ON tb_requisition (created_at);
 
+CREATE INDEX idx_requisition_prelist
+ON tb_requisition (id_pre_list);
+
+CREATE UNIQUE INDEX uq_requisition_prelist_active
+ON tb_requisition (id_pre_list)
+WHERE id_pre_list IS NOT NULL AND status NOT IN ('CANCELLED', 'REJECTED');
+
 CREATE INDEX idx_requisitionitem_requisition 
 ON tb_requisition_item (id_requisition);
 

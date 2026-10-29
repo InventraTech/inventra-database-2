@@ -48,6 +48,10 @@ DROP INDEX IF EXISTS idx_requisition_status;
 
 DROP INDEX IF EXISTS idx_requisition_created_at;
 
+DROP INDEX IF EXISTS idx_requisition_prelist;
+
+DROP INDEX IF EXISTS uq_requisition_prelist_active;
+
 DROP INDEX IF EXISTS idx_requisitionitem_requisition;
 
 DROP INDEX IF EXISTS idx_requisitionitem_product;

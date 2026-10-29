@@ -5,6 +5,9 @@
 DROP TRIGGER IF EXISTS trg_product_supplier_updated_at
 ON tb_product_supplier;
 
+DROP TRIGGER IF EXISTS trg_requisition_prelist_consistency
+ON tb_requisition;
+
 DROP TRIGGER IF EXISTS trg_category_no_cycle
 ON tb_category;
 
