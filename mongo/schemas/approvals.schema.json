@@ -1,0 +1,243 @@
+{
+  "bsonType": "object",
+  "title": "dbIAI.approvals",
+  "description": "Proposta de ação sobre o estoque criada pela IA (tools propor_*). Nada é executado até o próprio solicitante aprovar; a proposta é imutável (proposal_hash) e carrega a própria auditoria.",
+  "required": [
+    "_id",
+    "requester_id",
+    "kitchen_id",
+    "idempotency_key",
+    "action",
+    "requester",
+    "before",
+    "justification",
+    "proposal_hash",
+    "status",
+    "created_at",
+    "expires_at",
+    "audit"
+  ],
+  "properties": {
+    "_id": {
+      "bsonType": "string",
+      "description": "SHA-256 de [user_id, kitchen_id, idempotency_key]; repetir a mesma proposta devolve o mesmo documento"
+    },
+    "requester_id": {
+      "bsonType": "string",
+      "description": "Quem pediu e o único que pode aprovar"
+    },
+    "kitchen_id": {
+      "bsonType": [
+        "int",
+        "long"
+      ],
+      "minimum": 1
+    },
+    "idempotency_key": {
+      "bsonType": "string",
+      "description": "sha256(turn_id:impressão da ação); um novo turno gera outra chave"
+    },
+    "action": {
+      "bsonType": "object",
+      "required": [
+        "operation",
+        "parameters"
+      ],
+      "properties": {
+        "operation": {
+          "bsonType": "string",
+          "description": "Operação de negócio, ex.: criar_produto, desativar_fornecedor"
+        },
+        "parameters": {
+          "bsonType": "object",
+          "description": "Parâmetros já validados; números como texto decimal"
+        }
+      }
+    },
+    "requester": {
+      "bsonType": "object",
+      "description": "Identidade no momento da proposta",
+      "required": [
+        "user_id",
+        "kitchen_id",
+        "role"
+      ],
+      "properties": {
+        "user_id": {
+          "bsonType": "string"
+        },
+        "kitchen_id": {
+          "bsonType": [
+            "int",
+            "long"
+          ],
+          "minimum": 1
+        },
+        "role": {
+          "bsonType": "string",
+          "description": "ESTOQUISTA, COMPRADOR ou SUPERVISOR"
+        },
+        "name": {
+          "bsonType": "string"
+        },
+        "mocked": {
+          "bsonType": "bool"
+        }
+      }
+    },
+    "before": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "required": [
+          "parameter"
+        ],
+        "properties": {
+          "parameter": {
+            "bsonType": "string",
+            "description": "Parâmetro da ação que aponta para o registro (ex.: batchId)"
+          },
+          "record": {
+            "bsonType": [
+              "object",
+              "null"
+            ],
+            "description": "Retrato do registro da API Spring antes da proposta; null quando é uma checagem de inexistência"
+          }
+        }
+      },
+      "description": "Estado do estoque no momento da proposta; a execução revalida e recusa se mudou"
+    },
+    "justification": {
+      "bsonType": "string",
+      "description": "Motivo informado pelo especialista (até 1000 caracteres)"
+    },
+    "proposal_hash": {
+      "bsonType": "string",
+      "description": "SHA-256 de action + requester + before + justification; a decisão precisa repeti-lo",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "status": {
+      "enum": [
+        "AGUARDANDO_APROVACAO",
+        "APROVADA_PENDENTE_INTEGRACAO",
+        "EM_EXECUCAO",
+        "CONCLUIDA",
+        "RECUSADA",
+        "FALHOU",
+        "EXPIRADA",
+        "RESULTADO_INCERTO"
+      ],
+      "description": "RECUSADA também vale para propostas canceladas pelo juiz (judge_cancelled = true)"
+    },
+    "created_at": {
+      "bsonType": "date"
+    },
+    "expires_at": {
+      "bsonType": "date",
+      "description": "created_at + 7 dias; expirada deixa de poder ser aprovada"
+    },
+    "decided_by": {
+      "bsonType": [
+        "string",
+        "null"
+      ],
+      "description": "user_id de quem decidiu, ou juiz quando o JEV cancelou"
+    },
+    "decision": {
+      "enum": [
+        "approve",
+        "reject",
+        null
+      ],
+      "description": "null enquanto aguarda"
+    },
+    "decision_reason": {
+      "bsonType": [
+        "string",
+        "null"
+      ]
+    },
+    "decided_at": {
+      "bsonType": [
+        "date",
+        "null"
+      ]
+    },
+    "judge_cancelled": {
+      "bsonType": "bool",
+      "description": "true = o JEV reprovou antes de a proposta chegar ao usuário; fica só para auditoria e some das listas"
+    },
+    "execution_started_at": {
+      "bsonType": "date"
+    },
+    "executed_at": {
+      "bsonType": "date"
+    },
+    "result": {
+      "bsonType": [
+        "object",
+        "null"
+      ],
+      "description": "Resultado devolvido pela API Spring (ToolResult)"
+    },
+    "execution_error": {
+      "bsonType": [
+        "string",
+        "null"
+      ]
+    },
+    "exception_type": {
+      "bsonType": "string",
+      "description": "Tipo da exceção quando a execução falhou depois de iniciar"
+    },
+    "technical_executor": {
+      "bsonType": "string",
+      "description": "Quem executa: iai"
+    },
+    "business_mode": {
+      "bsonType": "string",
+      "description": "spring (API real) ou mock (dados de demonstração)"
+    },
+    "confirmation_policy": {
+      "bsonType": "string",
+      "description": "requester: só o solicitante confirma"
+    },
+    "notification": {
+      "bsonType": "object",
+      "properties": {
+        "channel": {
+          "bsonType": "string"
+        },
+        "available": {
+          "bsonType": "bool"
+        }
+      }
+    },
+    "audit": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "required": [
+          "event",
+          "at",
+          "actor"
+        ],
+        "properties": {
+          "event": {
+            "bsonType": "string",
+            "description": "PROPOSTA_CRIADA, APROVADA_PENDENTE_INTEGRACAO, RECUSADA, CANCELADA_PELO_JUIZ, EM_EXECUCAO, CONCLUIDA, FALHOU, EXPIRADA, RESULTADO_INCERTO"
+          },
+          "at": {
+            "bsonType": "date"
+          },
+          "actor": {
+            "bsonType": "string",
+            "description": "user_id, iai ou juiz"
+          }
+        }
+      },
+      "description": "Só cresce; nunca é reescrita"
+    }
+  }
+}

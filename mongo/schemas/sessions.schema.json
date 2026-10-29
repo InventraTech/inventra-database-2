@@ -1,24 +1,83 @@
 {
   "bsonType": "object",
   "title": "dbIAI.sessions",
-  "description": "Uma conversa do chat da IA. Ativa enquanto summary está vazio; /chat/encerrar grava o resumo e fecha a sessão.",
-  "required": ["_id", "session_id", "user_id", "started_at", "updated_at", "summary", "messages"],
+  "description": "Uma conversa do chat da IA, de um usuário em uma cozinha. Ativa enquanto active = true; /chat/encerrar grava o resumo e fecha a sessão.",
+  "required": [
+    "_id",
+    "session_id",
+    "user_id",
+    "kitchen_id",
+    "active",
+    "started_at",
+    "updated_at",
+    "summary",
+    "messages"
+  ],
   "properties": {
-    "_id":        { "bsonType": "string", "description": "UUID v4 gerado pela IAI (doc_id devolvido em /chat/historico)" },
-    "session_id": { "bsonType": "string", "description": "Identificador da conversa enviado pelo app; pode se repetir entre sessões encerradas" },
-    "user_id":    { "bsonType": "string", "description": "Dono da conversa; isola o histórico (tool buscar_historico)" },
-    "started_at": { "bsonType": "date" },
-    "updated_at": { "bsonType": "date" },
-    "summary":    { "bsonType": "string", "description": "Resumo gerado pelo LLM ao encerrar; vazio = sessão ativa" },
+    "_id": {
+      "bsonType": "string",
+      "description": "UUID v4 gerado pela IAI (doc_id devolvido em /chat/historico)"
+    },
+    "session_id": {
+      "bsonType": "string",
+      "description": "Identificador da conversa enviado pelo app; pode se repetir entre sessões encerradas"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "Dono da conversa; junto com kitchen_id isola o histórico (tool buscar_historico)"
+    },
+    "kitchen_id": {
+      "bsonType": [
+        "int",
+        "long"
+      ],
+      "minimum": 1,
+      "description": "Cozinha da conversa; o histórico nunca atravessa cozinhas"
+    },
+    "active": {
+      "bsonType": "bool",
+      "description": "true = conversa aberta (no máximo uma por user_id + kitchen_id + session_id); /chat/encerrar muda para false"
+    },
+    "started_at": {
+      "bsonType": "date"
+    },
+    "updated_at": {
+      "bsonType": "date"
+    },
+    "summary": {
+      "bsonType": "string",
+      "description": "Resumo gerado pelo LLM ao encerrar; vazio enquanto a sessão está ativa"
+    },
     "messages": {
       "bsonType": "array",
       "items": {
         "bsonType": "object",
-        "required": ["role", "content"],
+        "required": [
+          "role",
+          "content"
+        ],
         "properties": {
-          "role":      { "enum": ["human", "iai", "judge"], "description": "judge = reprovação do juiz, só para auditoria" },
-          "content":   { "bsonType": "string", "description": "Texto já anonimizado (e-mail, CPF, RG e telefone viram tokens)" },
-          "confianca": { "bsonType": ["double", "int"], "minimum": 0, "maximum": 1, "description": "Só em role = judge" }
+          "role": {
+            "enum": [
+              "human",
+              "iai",
+              "judge"
+            ],
+            "description": "judge = reprovação do juiz, só para auditoria"
+          },
+          "content": {
+            "bsonType": "string",
+            "description": "Texto já anonimizado (e-mail, CPF, RG e telefone viram tokens)"
+          },
+          "confianca": {
+            "bsonType": [
+              "double",
+              "int"
+            ],
+            "minimum": 0,
+            "description": "Só em role = judge",
+            "maximum": 1
+          }
         }
       }
     }
