@@ -8,9 +8,6 @@ ON tb_user (id_profile);
 CREATE INDEX idx_user_kitchen 
 ON tb_user (id_kitchen);
 
-CREATE INDEX idx_user_email 
-ON tb_user (email);
-
 CREATE INDEX idx_user_active 
 ON tb_user (active);
 
@@ -23,29 +20,17 @@ ON tb_category (id_parent_category);
 CREATE INDEX idx_product_unit
 ON tb_product (id_unit);
 
-CREATE INDEX idx_product_barcode
-ON tb_product (barcode);
-
 CREATE INDEX idx_product_active 
 ON tb_product (active);
 
-CREATE INDEX idx_productsupplier_product 
-ON tb_product_supplier (id_product);
-
 CREATE INDEX idx_productsupplier_supplier 
 ON tb_product_supplier (id_supplier);
-
-CREATE INDEX idx_parameter_product 
-ON tb_product_kitchen_parameter (id_product);
 
 CREATE INDEX idx_parameter_kitchen 
 ON tb_product_kitchen_parameter (id_kitchen);
 
 CREATE INDEX idx_batch_product 
 ON tb_stock_batch (id_product);
-
-CREATE INDEX idx_batch_kitchen 
-ON tb_stock_batch (id_kitchen);
 
 CREATE INDEX idx_batch_supplier 
 ON tb_stock_batch (id_supplier);
@@ -64,9 +49,6 @@ ON tb_requisition (id_requester_user);
 
 CREATE INDEX idx_requisition_approver_user 
 ON tb_requisition (id_approver_user);
-
-CREATE INDEX idx_requisition_status 
-ON tb_requisition (status);
 
 CREATE INDEX idx_requisition_created_at 
 ON tb_requisition (created_at);
@@ -110,9 +92,6 @@ ON tb_alert (id_product);
 
 CREATE INDEX idx_alert_batch 
 ON tb_alert (id_batch);
-
-CREATE INDEX idx_alert_is_read 
-ON tb_alert (is_read);
 
 CREATE INDEX idx_alert_severity 
 ON tb_alert (severity);

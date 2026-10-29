@@ -12,7 +12,7 @@ Visão de como o repositório é organizado e por que, mais as decisões de desi
 
 ```mermaid
 flowchart LR
-    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V021"]
+    D["Dicionário<br/>ddl · functions · procedures · triggers · views"] -->|consolidado em| M["migrations<br/>V001 … V022"]
     M -->|psql / CI| DB[("PostgreSQL")]
     M -->|cópia byte a byte| API["ms-inventra-api<br/>Flyway"]
     R["rollback/<br/>drop_*.sql"] -.->|reverte| DB
@@ -43,6 +43,7 @@ flowchart LR
 | `V019__category_hierarchy.sql` | Hierarquia de categorias (`tb_category.id_parent_category`, autorrelacionamento) com CTE recursiva: trava anti-ciclo `trg_category_no_cycle`, `fn_category_descendants`, `vw_category_tree`, `vw_category_stock_rollup` e `dim_category` (snowflake) |
 | `V020__product_supplier_updated_at.sql` | `tb_product_supplier.updated_at`, renovado em todo UPDATE por `trg_product_supplier_updated_at`: data da última gravação do vínculo produto–fornecedor, que define a ordem da lista de fornecedores do produto (do mais recente para o mais antigo) |
 | `V021__requisition_pre_list.sql` | `tb_requisition.id_pre_list` (FK para `tb_pre_list`, opcional, com índice), `uq_requisition_prelist_active`, `ck_requisition_prelist_purchase` e `trg_requisition_prelist_consistency`: a compra gerada de uma pré-lista aponta para ela, só `PURCHASE` e da cozinha da pré-lista, e o banco recusa uma segunda requisição ativa (nem `CANCELLED` nem `REJECTED`) da mesma pré-lista |
+| `V022__remove_alert_is_read_e_indices_duplicados.sql` | Remove `tb_alert.is_read` (a leitura é só por pessoa, em `tb_alert_read`; o que estava lido vira leitura de cada destinatário) e 7 índices: 5 que repetem a PK ou um índice composto e 2 que duplicam o `UNIQUE` de `email` e `barcode` |
 | `rollback/drop_everything.sql` | Reversão completa |
 
 As pastas de dicionário não têm numeração porque não representam sequência; a ordem de execução é definida só por `migrations/`.
@@ -50,22 +51,23 @@ As pastas de dicionário não têm numeração porque não representam sequênci
 ## Convenções
 
 - **Fonte da verdade:** este repositório é o dono do schema. Toda mudança nasce aqui, na pasta de dicionário correspondente **e** em `migrations`.
-- **Integração com a API:** `ms-inventra-api` apenas copia `V001` a `V021` byte a byte para `src/main/resources/db/migration` e o Flyway aplica. Nunca se edita migration direto na API.
+- **Integração com a API:** `ms-inventra-api` apenas copia `V001` a `V022` byte a byte para `src/main/resources/db/migration` e o Flyway aplica. Nunca se edita migration direto na API.
 - **Imutabilidade:** migrations são idempotentes e numeradas em sequência (`V006`, `V007`…). Uma migration já aplicada em algum banco não deve ser alterada; mudanças novas entram em uma nova versão.
 - **Mensagens em português:** os `RAISE EXCEPTION` das functions e procedures estão em português de propósito, porque a API os repassa ao cliente no `detail` das respostas 409.
 - **Job diário:** `sp_expire_batches()` marca lotes vencidos como `EXPIRED` e gera os alertas correspondentes. É chamada diariamente pelo `BatchExpirationJob` da API. `sp_alert_expiring_batches(p_days)` avisa **antes** de vencer e deve ser chamada pelo mesmo job.
-- **Views não mudam de colunas:** o CI reaplica todas as migrations em sequência, e `CREATE OR REPLACE VIEW` não aceita remover coluna. Uma migration nova que recria uma view antiga precisa manter exatamente as mesmas colunas (só o corpo muda); coluna nova pede uma view nova.
+- **Views não mudam de colunas:** as migrations rodam em sequência num banco novo, e `CREATE OR REPLACE VIEW` não aceita remover coluna. Uma migration nova que recria uma view antiga precisa manter exatamente as mesmas colunas (só o corpo muda); coluna nova pede uma view nova.
 - **Catálogo de dados:** migration que cria tabela ou coluna também grava os metadados dela no catálogo (`INSERT ... ON CONFLICT DO UPDATE`, como na `V010`). O que faltar é incluído sem descrição por `sp_sync_data_catalog()` e aparece com `is_documented = false` em `vw_data_catalog`. Veja [`DATA_CATALOG.md`](DATA_CATALOG.md).
 - **Procedure com parâmetro novo:** o parâmetro entra com `DEFAULT` e a assinatura antiga é removida com `DROP PROCEDURE IF EXISTS` na mesma migration, para a chamada antiga continuar valendo sem ficar ambígua.
 
 ## Validação automática (CI)
 
-`tests/check_migrations.sh` roda no GitHub Actions (`.github/workflows/migrations.yml`, PostgreSQL 16) e cobre quatro passos:
+`tests/check_migrations.sh` roda no GitHub Actions (`.github/workflows/migrations.yml`, PostgreSQL 16) e cobre três passos:
 
-1. aplica `V001`…`V021` em banco limpo;
-2. reaplica tudo (prova de idempotência);
-3. executa `rollback/drop_everything.sql`;
-4. reaplica do zero após o rollback.
+1. aplica `V001`…`V022` em banco limpo, reaplicando cada migration logo depois de aplicá-la (prova de idempotência de cada arquivo);
+2. executa `rollback/drop_everything.sql`;
+3. reaplica do zero após o rollback.
+
+A idempotência é por migration, e não "tudo de novo sobre o estado final": uma migration que remove objeto (a `V022` dropa `tb_alert.is_read`, que a `V001`, a `V004` e a `V008` ainda citam) não permite reaplicar as anteriores, e migration aplicada não se edita.
 
 Depois, `tests/check_normalization_integrity.sql` confere as triggers que protegem as redundâncias controladas do modelo ([`NORMALIZATION.md`](normalization/NORMALIZATION.md)), numa transação desfeita no fim, `tests/check_daily_access.sql` faz o mesmo com o registro de acessos e as views de DAU, `tests/check_ui_click_counter.sql` com o contador de cliques ([`MONITORING.md`](MONITORING.md)) e `tests/check_category_hierarchy.sql` com a hierarquia de categorias (árvore, subárvore, soma pela árvore e as travas contra ciclo), `tests/check_product_supplier_updated_at.sql` com a data e a ordem dos vínculos produto–fornecedor e `tests/check_requisition_pre_list.sql` com a ligação da compra à pré-lista (uma só requisição ativa por pré-lista). Em seguida, `tests/check_backup_restore.sh` desfaz operações pela auditoria, gera um backup com `backup/backup.sh`, restaura num banco novo com `backup/restore.sh` e compara a contagem de linhas de cada tabela. Detalhes em [`BACKUP_AND_RECOVERY.md`](BACKUP_AND_RECOVERY.md).
 

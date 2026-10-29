@@ -8,7 +8,7 @@ Demonstração de que o banco do Inventra está normalizado até a **3ª Forma N
 |--------------|----------|-------------------|
 | 1FN | ✅ Atende (exceto as tabelas de log, que guardam o retrato da linha em JSON de propósito) | [Seção 4.1](#41-primeira-forma-normal-1fn) |
 | 2FN | ✅ Atende: as 4 tabelas de chave composta não têm dependência parcial | [Seção 4.2](#42-segunda-forma-normal-2fn) |
-| 3FN | ✅ Atende, com 5 **redundâncias controladas** documentadas, protegidas pelo próprio banco e verificáveis | [Seções 4.3](#43-terceira-forma-normal-3fn) e [5](#5-redundâncias-controladas) |
+| 3FN | ✅ Atende, com 4 **redundâncias controladas** documentadas, protegidas pelo próprio banco e verificáveis | [Seções 4.3](#43-terceira-forma-normal-3fn) e [5](#5-redundâncias-controladas) |
 | FNBC | ✅ Atende: todo determinante é chave candidata | [Seção 4.4](#44-forma-normal-de-boyce-codd-fnbc) |
 | 4FN e 5FN | ✅ Atende: não há fatos multivalorados independentes nem associação ternária decomponível | [Seção 4.5](#45-quarta-e-quinta-formas-normais-4fn-e-5fn) |
 
@@ -67,7 +67,7 @@ Em todas as tabelas abaixo, a única DF é **chave → demais colunas**, exceto 
 | `tb_inventory` | `id_inventory` | `id_inventory → id_kitchen, id_responsible_user, started_at, closed_at, status, note` | |
 | `tb_inventory_count` | `id_count` | `id_count → id_inventory, id_batch, registered_quantity, physical_quantity, divergence` e `(physical_quantity, registered_quantity) → divergence` | `divergence`: [R1](#r1-divergência-do-inventário-divergence) |
 | `tb_stock_movement` | `id_movement` | `id_movement → id_batch, id_user, id_requisition, type, reason, quantity, balance_after, created_at` | `balance_after`: [R3](#r3-saldo-após-a-movimentação-balance_after) |
-| `tb_alert` | `id_alert` | `id_alert → type, severity, id_batch, id_product, id_kitchen, id_user, id_target_profile, ref_key, message, is_read, created_at` e, quando há lote, `id_batch → id_product, id_kitchen` | [R4](#r4-produto-e-cozinha-no-alerta-com-lote) e [R5](#r5-dois-modelos-de-leitura-de-alerta) |
+| `tb_alert` | `id_alert` | `id_alert → type, severity, id_batch, id_product, id_kitchen, id_user, id_target_profile, ref_key, message, created_at` e, quando há lote, `id_batch → id_product, id_kitchen` | [R4](#r4-produto-e-cozinha-no-alerta-com-lote) |
 | `tb_user_daily_access` | `(id_user, access_date)` | `(id_user, access_date) → first_access_time, last_access_time, access_count` | Guarda só a **hora** do primeiro e do último acesso: com `TIMESTAMP`, valeria `first_access_at → access_date`, um determinante que não é chave (fora da FNBC) |
 | `tb_ui_click_counter` | `id_counter` (sempre 1) | `id_counter →` cada contador | **Exceção consciente à 1FN**: as colunas contadoras são um grupo repetido (uma por coisa clicável). É de propósito: o produto precisa só do total de cliques de cada botão, com `UPDATE coluna = coluna + 1`, sem histórico. Como a tabela tem uma linha só, não há redundância nem anomalia de atualização. Custo: elemento novo = `ADD COLUMN` |
 
@@ -187,11 +187,10 @@ São colunas que poderiam ser calculadas a partir de outras e foram guardadas po
   As functions e procedures de alerta já copiavam do lote. A API recusa lote de outra cozinha ou de outro produto, mas aceitava um alerta com lote e **sem** produto, que agora é completado pela trigger.
 - **Histórico:** antes da `V012`, nenhuma constraint garantia a regra. A `V012` corrigiu os alertas existentes a partir do lote; as correções ficam registradas em `tb_log_alert`.
 
-### R5. Dois modelos de leitura de alerta
+### Histórico: `tb_alert.is_read`
 
-- **Redundância:** `tb_alert.is_read` (alerta lido por alguém) convive com `tb_alert_read` (leitura por pessoa, desde a `V008`).
-- **Por que existe:** compatibilidade. O app antigo marca o alerta inteiro como lido, e o novo registra a leitura de cada pessoa. A regra "alerta aberto = `is_read = false` **e** nenhuma linha em `tb_alert_read`" considera os dois.
-- **Melhoria possível:** quando o app antigo for desligado, migrar os `is_read = true` para `tb_alert_read` e remover a coluna.
+- Até a `V021`, `tb_alert.is_read` (alerta lido por alguém) convivia com `tb_alert_read` (leitura por pessoa, desde a `V008`), por compatibilidade com um app antigo que marcava o alerta inteiro como lido. Era a quinta redundância controlada (R5).
+- No banco e na API atual, nenhum caminho marcava `is_read` como `true`; só dados antigos poderiam tê-lo. A `V022` migrou o que estivesse lido para `tb_alert_read` (um registro por destinatário) e removeu a coluna: hoje há **um só modelo** de leitura.
 
 ### 5.1 Retratos históricos não são redundância
 
@@ -273,7 +272,6 @@ psql -f postgre/docs/normalization/normalization_checks.sql
 | Consulta | Esperado |
 |----------|----------|
 | R1 a R4 e status | `inconsistentes = 0` (desde a `V012`, R1 e R4 são garantidas por trigger) |
-| R5 | Informativo: alertas lidos só pelo modelo antigo |
 | cidade → UF, marca → categoria | Linhas retornadas **provam** que a dependência não existe, então não há tabela a extrair. Zero linhas não provam o contrário: só mostram que os dados atuais não a contradizem |
 
 O arquivo só faz leitura e pode rodar direto no banco do Aiven, com os dados do seed.

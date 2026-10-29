@@ -429,3 +429,6 @@ inverso, então ela já usava `tb_category_pkey`.
 Rollback isolado em `ddl/indexes/rollback/drop_indexes.sql` e
 `ddl/logs/rollback/drop_log_indexes.sql`; todos os cinco também estão no
 `migrations/rollback/drop_everything.sql`.
+
+> [!NOTE]
+> Os índices de uma coluna só citados nos "Antes" (`idx_requisition_status`, `idx_productsupplier_product` e `idx_batch_kitchen`) são prefixo exato dos compostos acima (ou da PK) e foram removidos na `V022`: a leitura usa o composto, e o de uma coluna só custava escrita sem ganho. As medições dos "Antes" continuam valendo como registro do que existia na época.

@@ -276,7 +276,6 @@ FROM (VALUES
 	('tb_alert', 'id_target_profile', 'Perfil destinatário.', NULL, NULL, false),
 	('tb_alert', 'ref_key', 'Referência da origem (id da requisição, do pedido ou código de barras).', NULL, NULL, false),
 	('tb_alert', 'message', 'Texto exibido ao usuário.', NULL, NULL, false),
-	('tb_alert', 'is_read', 'Leitura do alerta inteiro (modelo antigo).', 'Alerta aberto = is_read false e nenhuma linha em tb_alert_read.', NULL, false),
 	('tb_alert', 'created_at', 'Data e hora de criação.', NULL, NULL, false),
 	-- tb_alert_read
 	('tb_alert_read', 'id_alert', 'Alerta lido.', 'Parte da PK composta; cascata ao apagar o alerta.', NULL, false),
