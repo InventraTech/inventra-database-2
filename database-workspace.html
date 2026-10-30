@@ -561,7 +561,14 @@ details.raw summary{display:inline-flex;align-items:center;gap:8px;cursor:pointe
 .nsq a:hover .bx,.nsq a:focus-visible .bx{stroke:var(--brand);stroke-width:1.6}
 .nsq a:focus{outline:none}
 .nsq text{fill:var(--ink)}
-.nsq .t-h{font:500 15px var(--mono)}
+.nsq .t-h{font:600 13.5px var(--font)}
+.nsq .t-c{font:500 11px var(--mono);fill:var(--faint)}
+.nsq .t-n.it{font-style:italic}
+.nsq .er-shadow{fill:#16112A;opacity:.035}
+.nsq .er-key{font:600 9.5px var(--mono);fill:var(--gold)}
+.nsq .er-key.fk{fill:var(--brand)}
+.nsq .er-key.ix{fill:var(--faint)}
+.nsq .er-nn{font:500 8.5px var(--mono);fill:var(--faint)}
 .nsq .t-s{font:400 11px var(--font);fill:var(--muted)}
 .nsq .t-b{font:600 13px var(--font)}
 .nsq .t-f{font:400 11.5px var(--mono)}
@@ -605,6 +612,9 @@ details.raw summary{display:inline-flex;align-items:center;gap:8px;cursor:pointe
 .nsq-legend .lg-link.solid{border-top-style:solid}
 .nsq-legend .lg-gold{height:0;border-top:2px dashed var(--gold)}
 .nsq-legend .lg-node{width:14px;height:14px;border-radius:50%;background:var(--brand-soft);border:1.5px solid var(--brand)}
+.nsq-legend .lg-key{display:inline-block;font:600 10px var(--mono);padding:1px 6px;border-radius:4px;background:var(--surface-3);color:var(--muted)}
+.nsq-legend .lg-key.pk{background:var(--yellow-soft);color:var(--yellow-ink)}
+.nsq-legend .lg-key.ref{background:var(--brand-soft);color:var(--brand-ink)}
 /* neo4j */
 .g-graph svg{width:100%;height:auto;display:block}
 .g-col{font:600 10.5px var(--mono);fill:var(--faint);letter-spacing:.08em}
@@ -2505,9 +2515,11 @@ function pageNeo4j(params) {
 }
 /* =========================================================
    MODELAGEM DO MONGODB, REDIS E NEO4J
-   Diagramas desenhados a partir dos contratos versionados (schemas e índices do dbIAI,
-   tabela do KEYSPACE.md, especificação e Cypher do Neo4j): mudou o contrato, muda o desenho.
+   Os diagramas seguem o ER do PostgreSQL (cartão com cabeçalho e contagem, PK/NN, sombra, setas curvas) e são
+   desenhados a partir dos arquivos versionados: $jsonSchema e create_indexes.js, tabela do KEYSPACE.md,
+   scripts Lua e Cypher da projeção. Só entra no desenho o que o arquivo comprova.
    ========================================================= */
+const NQ_HEAD = 40, NQ_ROW = 24;
 const svgT = (x, y, s, cls, anchor, title) => `<text class="${cls}" x="${x}" y="${y}"${anchor ? ` text-anchor="${anchor}"` : ''}>${title ? `<title>${esc(title)}</title>` : ''}${esc(s)}</text>`;
 const svgMarkers = id => `<defs>${[['', ''], ['-on', 'on'], ['-gold', 'gold']].map(([s, c]) => `<marker id="${id}${s}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah ${c}" d="M0,0 L10,5 L0,10 z"/></marker>`).join('')}</defs>`;
 const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
@@ -2518,13 +2530,32 @@ function wrapParts(parts, max, sep = ' · ') {
   if (cur) out.push(cur);
   return out;
 }
+/* Cartão no padrão do ER do PostgreSQL: sombra, caixa, cabeçalho, ponto da marca, título e contagem. */
+function nqCard(x, y, w, h, title, count, o = {}) {
+  return `<rect class="er-shadow" x="${x}" y="${y + 3}" width="${w}" height="${h}" rx="10"/>`
+    + `<rect class="bx${o.dash ? ' dash' : ''}" x="${x}" y="${y}" width="${w}" height="${h}" rx="10"/>`
+    + (o.head === false ? '' : `<path class="bx-h" d="M${x + 1},${y + 11} a10,10 0 0 1 10,-10 h${w - 22} a10,10 0 0 1 10,10 v${NQ_HEAD - 11} h-${w - 2} z"/>`
+      + `<line class="hr" x1="${x}" x2="${x + w}" y1="${y + NQ_HEAD}" y2="${y + NQ_HEAD}"/>`
+      + `<circle cx="${x + 17}" cy="${y + NQ_HEAD / 2}" r="4.5" fill="var(--brand)"/>`
+      + svgT(x + 30, y + 25, title, 't-h', '', o.tip) + (count != null ? svgT(x + w - 12, y + 25, String(count), 't-c', 'end', o.countTip) : ''));
+}
+/* Linha de campo: PK/REF à esquerda, NN, nome em mono e tipo à direita (mesma ordem do ER do PostgreSQL). */
+function nqRow(x, top, w, o) {
+  let s = '';
+  if (o.key) s += svgT(x + 12, top + 16, o.key, 'er-key' + ({ REF: ' fk', IX: ' ix' }[o.key] || ''), '', o.keyTip);
+  if (o.nn) s += svgT(x + 38, top + 16, 'NN', 'er-nn');
+  s += svgT(x + 56, top + 16, o.name, 't-f', '', o.tip);
+  if (o.type != null) s += `<text class="t-ty" x="${x + w - 12}" y="${top + 16}" text-anchor="end">${esc(o.type)}${o.ref ? `<tspan class="t-ref"> → ${esc(o.ref)}</tspan>` : ''}${o.tip ? `<title>${esc(o.tip)}</title>` : ''}</text>`;
+  return s;
+}
 
 /* ---------- MongoDB ---------- */
-const MONGO_REF = { user_id: 'tb_user.id_user', requester_id: 'tb_user.id_user', kitchen_id: 'tb_kitchen' };
+/* Referências lógicas ao PostgreSQL, como documenta o MONGO_MODEL.md: sem chave estrangeira. */
+const MONGO_REF = { user_id: ['tb_user', 'id_user'], requester_id: ['tb_user', 'id_user'], kitchen_id: ['tb_kitchen', 'id_kitchen'] };
 function bsonShort(v) {
   if (v.enum) {
     const vals = v.enum.filter(x => x !== null); const s = vals.join(' | ');
-    return (s.length <= 24 ? s : `enum · ${vals.length}`) + (vals.length < v.enum.length ? '?' : '');
+    return (s.length <= 22 ? s : `enum · ${vals.length}`) + (vals.length < v.enum.length ? '?' : '');
   }
   let ts = [].concat(v.bsonType || 'any'); const opt = ts.includes('null'); ts = ts.filter(t => t !== 'null');
   let t = ts.join(' | ');
@@ -2533,58 +2564,70 @@ function bsonShort(v) {
   else if (t === 'array') t = v.items ? bsonShort(v.items) + '[]' : 'array';
   return t + (opt ? '?' : '');
 }
-function mongoBox(c, x, y, w, idx) {
-  const s = c.schema || {}; const req = s.required || []; const body = []; const rows = {};
-  const per = Math.floor((w - 44) / 6.5);
-  let cy = y + 66;
-  Object.entries(s.properties || {}).forEach(([k, v]) => {
+/* Filtro parcial de cada índice, lido de create_indexes.js (o build.py guarda só o nome e a unicidade). */
+function mongoPartials() {
+  const f = FILES.get('mongo/indexes/create_indexes.js'); const out = {};
+  if (f) f.content.split('\n').forEach(l => {
+    const n = l.match(/name:\s*'([^']+)'/), p = l.match(/partialFilterExpression:\s*\{\s*(\w+):\s*(\w+)\s*\}/);
+    if (n && p) out[n[1]] = `${p[1]} = ${p[2]}`;
+  });
+  return out;
+}
+function mongoBox(c, x, y, w, idx, partials) {
+  const s = c.schema || {}; const req = s.required || []; const out = []; const rows = {};
+  const entries = Object.entries(s.properties || {});
+  const per = Math.floor((w - 64) / 6.3);
+  let cy = y + NQ_HEAD + 6;
+  if (c.ghost || c.control) {
+    out.push(svgT(x + 14, cy + 15, c.control ? 'controle da esteira, sem validador' : c.created ? `criada pela ${c.created}, sem validador $jsonSchema` : 'só tem índice, sem contrato', 't-n'));
+    cy += NQ_ROW;
+  }
+  entries.forEach(([k, v]) => {
     const isArr = v.bsonType === 'array';
     const kids = v.bsonType === 'object' ? v.properties : isArr && v.items && v.items.bsonType === 'object' ? v.items.properties : null;
-    const fcls = 't-f' + (req.includes(k) ? ' req' : '');
+    const ref = MONGO_REF[k];
+    const base = { name: k, nn: req.includes(k), tip: v.description, key: k === '_id' ? 'PK' : ref ? 'REF' : '', keyTip: k === '_id' ? 'Chave primária do documento' : ref ? `Referência lógica a ${ref[0]}.${ref[1]} no PostgreSQL, sem chave estrangeira` : '' };
     if (kids && Object.keys(kids).length) {
       const ls = wrapParts(Object.keys(kids), per);
-      const gh = 24 + ls.length * 15;
-      body.push(`<rect class="nest" x="${x + 10}" y="${cy - 15}" width="${w - 20}" height="${gh}" rx="6"/>`,
-        svgT(x + 20, cy, k + (isArr ? ' [ ]' : ' { }'), fcls, '', v.description), svgT(x + w - 20, cy, isArr ? 'array embutido' : 'objeto embutido', 't-n', 'end'));
-      ls.forEach((l, i) => body.push(svgT(x + 28, cy + 17 + i * 15, l, 't-n')));
-      rows[k] = cy - 4; cy += gh + 8;
+      const gh = NQ_ROW + ls.length * 15 + 4;
+      out.push(`<rect class="nest" x="${x + 8}" y="${cy}" width="${w - 16}" height="${gh}" rx="6"/>`, nqRow(x, cy, w, { ...base, type: isArr ? 'array<object>' : 'object' }));
+      ls.forEach((l, i) => out.push(svgT(x + 56, cy + NQ_ROW + 6 + i * 15, l, 't-n')));
+      rows[k] = cy + NQ_ROW / 2; cy += gh + 4;
     } else {
-      const ref = MONGO_REF[k];
-      body.push(svgT(x + 14, cy, k, fcls, '', v.description), svgT(x + w - 14, cy, ref ? '→ ' + ref : bsonShort(v), ref ? 't-ref' : 't-ty', 'end'));
-      rows[k] = cy - 4; cy += 19;
+      out.push(nqRow(x, cy, w, { ...base, type: bsonShort(v), ref: ref ? ref[0] : '' }));
+      rows[k] = cy + NQ_ROW / 2; cy += NQ_ROW;
     }
   });
-  if (!Object.keys(s.properties || {}).length) { body.push(svgT(x + 14, cy, 'sem contrato $jsonSchema', 't-n')); cy += 19; }
   if (idx.length) {
-    body.push(`<line class="hr" x1="${x}" y1="${cy - 8}" x2="${x + w}" y2="${cy - 8}"/>`, svgT(x + 14, cy + 9, 'ÍNDICES', 't-lbl'));
-    cy += 30;
+    cy += 4;
+    out.push(`<line class="hr" x1="${x}" y1="${cy}" x2="${x + w}" y2="${cy}"/>`, svgT(x + 14, cy + 17, 'ÍNDICES', 't-lbl'));
+    cy += 40;
     idx.forEach(i => {
-      const ls = wrapParts(i.keys.map(([k, d]) => k + (d < 0 ? ' ↓' : '')), Math.floor((w - (i.unique ? 86 : 28)) / 6.5));
-      if (i.unique) body.push(`<rect class="chip uq" x="${x + w - 66}" y="${cy - 11}" width="52" height="15" rx="4"/>`, svgT(x + w - 40, cy, 'UNIQUE', 't-chip uq', 'middle'));
-      ls.forEach((l, j) => body.push(svgT(x + 14, cy + j * 15, l, 't-n', '', i.comment || i.name)));
+      const part = partials[i.name];
+      const ls = wrapParts(i.keys.map(([k, d]) => k + (d < 0 ? ' ↓' : '')), Math.floor((w - (i.unique ? 96 : 28)) / 6.3)).concat(part ? [`${i.unique ? 'único só' : 'só'} onde ${part}`] : []);
+      if (i.unique) out.push(`<rect class="chip uq" x="${x + w - 66}" y="${cy - 11}" width="54" height="15" rx="4"/>`, svgT(x + w - 39, cy, 'UNIQUE', 't-chip uq', 'middle'));
+      ls.forEach((l, j) => out.push(svgT(x + 14, cy + j * 15, l, j === ls.length - 1 && part ? 't-n it' : 't-n', '', i.comment || i.name)));
       cy += ls.length * 15 + 9;
     });
   }
-  const h = cy - y - 4;
-  const sub = c.ghost ? 'só índice, ainda sem contrato' : c.control ? 'controle da esteira' : (s.description || '').split(/[.;:]/)[0];
-  const frame = `<rect class="bx${c.ghost || c.control ? ' dash' : ''}" x="${x}" y="${y}" width="${w}" height="${h}" rx="12"/>`
-    + `<path class="bx-h" d="M${x + 1},${y + 46} V${y + 12} Q${x + 1},${y + 1} ${x + 12},${y + 1} H${x + w - 12} Q${x + w - 1},${y + 1} ${x + w - 1},${y + 12} V${y + 46} Z"/>`
-    + `<line class="hr" x1="${x}" y1="${y + 46}" x2="${x + w}" y2="${y + 46}"/>`
-    + svgT(x + 14, y + 21, c.name, 't-h') + svgT(x + 14, y + 37, clip(sub, Math.floor((w - 28) / 5.6)), 't-s', '', s.description);
-  const g = `<g>${frame}${body.join('')}</g>`;
+  const h = cy - y + 2;
+  const g = `<g>${nqCard(x, y, w, h, c.name, entries.length || null, { dash: c.ghost || c.control, tip: s.description, countTip: 'campos no contrato' })}${out.join('')}</g>`;
   return { svg: c.ghost ? g : `<a href="#/mongo/${esc(c.name)}" aria-label="Abrir a coleção ${esc(c.name)}">${g}</a>`, h, rows };
 }
 function mongoModelSvg() {
   const M = D.mongo || { collections: [], indexes: [] };
-  const cols = mongoCollections().slice();
-  // coleção que só aparece em create_indexes.js (ex.: notifications) entra tracejada
-  [...new Set(M.indexes.map(i => i.collection))].filter(n => !cols.some(c => c.name === n)).forEach(n => cols.push({ name: n, ghost: true, schema: {} }));
-  const W = 320, GAP = 52, N = Math.min(3, cols.length) || 1;
+  const cols = mongoCollections().slice(); const partials = mongoPartials();
+  // coleção que só aparece em create_indexes.js (ex.: notifications) entra tracejada; a migration que a cria vem do createCollection
+  [...new Set(M.indexes.map(i => i.collection))].filter(n => !cols.some(c => c.name === n)).forEach(n => {
+    const mig = [...FILES.keys()].filter(p => /^mongo\/migrations\/V\d+[^/]*\.js$/.test(p)).sort().find(p => FILES.get(p).content.includes(`createCollection('${n}'`));
+    cols.push({ name: n, ghost: true, created: mig ? mig.split('/').pop().match(/^V\d+/)[0] : '', schema: {} });
+  });
+  const W = 330, GAP = 52, N = Math.min(3, cols.length) || 1;
   const heights = Array(N).fill(0); const placed = [];
   cols.forEach(c => {
     const k = heights.indexOf(Math.min(...heights));
-    const x = 1 + k * (W + GAP), y = heights[k] ? heights[k] + 24 : 1;
-    const b = mongoBox(c, x, y, W, M.indexes.filter(i => i.collection === c.name));
+    const x = 1 + k * (W + GAP), y = heights[k] ? heights[k] + 28 : 1;
+    const b = mongoBox(c, x, y, W, M.indexes.filter(i => i.collection === c.name), partials);
     placed.push({ k, x, ...b }); heights[k] = y + b.h;
   });
   // o mesmo session_id liga a conversa às métricas de cada requisição dela
@@ -2593,10 +2636,10 @@ function mongoModelSvg() {
   for (let i = 1; i < has.length; i++) {
     const a = has[i - 1], b = has[i]; if (b.k !== a.k + 1) continue;
     const x1 = a.x + W, y1 = a.rows.session_id, x2 = b.x, y2 = b.rows.session_id, mx = x1 + GAP / 2;
-    links.push(`<path class="e on dash" d="M${x1},${y1} H${mx} V${y2} H${x2}"/><circle class="dot" cx="${x1}" cy="${y1}" r="3.5"/><circle class="dot" cx="${x2}" cy="${y2}" r="3.5"/>`);
+    links.push(`<path class="e on dash" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"><title>mesmo session_id</title></path><circle class="dot" cx="${x1}" cy="${y1}" r="3.5"/><circle class="dot" cx="${x2}" cy="${y2}" r="3.5"/>`);
   }
-  const VW = N * W + (N - 1) * GAP + 2, VH = Math.max(...heights) + 2;
-  return `<svg viewBox="0 0 ${VW} ${VH}" role="img" aria-label="Coleções do dbIAI com campos, objetos e arrays embutidos e índices; user_id e kitchen_id apontam para o PostgreSQL sem chave estrangeira." style="min-width:${Math.min(VW, 900)}px">${links.join('')}${placed.map(p => p.svg).join('')}</svg>`;
+  const VW = N * W + (N - 1) * GAP + 2, VH = Math.max(...heights) + 6;
+  return `<svg viewBox="0 0 ${VW} ${VH}" role="img" aria-label="Coleções do dbIAI com campos, objetos e arrays embutidos e índices; user_id, requester_id e kitchen_id referenciam o PostgreSQL sem chave estrangeira." style="min-width:${Math.min(VW, 940)}px">${links.join('')}${placed.map(p => p.svg).join('')}</svg>`;
 }
 function pageMongoModel() {
   crumbs([['MongoDB', '#/mongo'], ['Modelagem']]);
@@ -2604,11 +2647,11 @@ function pageMongoModel() {
     desc: 'As coleções do dbIAI lado a lado, desenhadas a partir dos contratos <code class="ic">$jsonSchema</code> e de <code class="ic">create_indexes.js</code>. Cada documento é lido e gravado inteiro, por isso as listas de tamanho variável ficam embutidas em vez de virar coleção. Clique numa coleção para ver cada campo.',
     actions: `<a class="btn" href="#/docs/mongo/docs/MONGO_MODEL.md">${icon('doc')}MONGO_MODEL.md</a>` }) +
   `<section class="section nsq-first"><div class="nsq">${mongoModelSvg()}</div>
-    <div class="nsq-legend"><span><b class="mono">negrito</b> campo obrigatório</span><span><span class="mono lg-ref">→ tb_user</span> referência ao PostgreSQL, sem chave estrangeira</span><span><span class="lg lg-nest"></span>objeto ou array embutido</span><span><span class="lg lg-link"></span>mesmo <code class="ic">session_id</code></span><span><span class="lg lg-dash"></span>sem contrato ou de controle</span></div></section>
+    <div class="nsq-legend"><span><b class="lg-key pk">PK</b>chave primária (<code class="ic">_id</code>)</span><span><b class="lg-key nn">NN</b>campo obrigatório no <code class="ic">$jsonSchema</code></span><span><b class="lg-key ref">REF</b>referência lógica ao PostgreSQL, sem chave estrangeira</span><span><span class="lg lg-nest"></span>objeto ou array embutido</span><span><span class="lg lg-link"></span>mesmo <code class="ic">session_id</code></span><span><span class="lg lg-dash"></span>sem validador</span></div></section>
   <section class="section"><div class="grid g3">
     <div class="card card-pad"><h3 style="font-size:15px">Isolamento por cozinha</h3><p class="small muted" style="margin-top:6px">Desde a V002 toda consulta da IAI filtra por <code class="ic">kitchen_id</code>: o histórico de uma conversa nunca atravessa cozinhas.</p></div>
-    <div class="card card-pad"><h3 style="font-size:15px">Sem chave estrangeira</h3><p class="small muted" style="margin-top:6px">Apagar um usuário no PostgreSQL exige <code class="ic">deleteMany</code> por <code class="ic">user_id</code> e <code class="ic">requester_id</code> nas coleções daqui.</p></div>
-    <div class="card card-pad"><h3 style="font-size:15px">Proposta imutável</h3><p class="small muted" style="margin-top:6px">Em <code class="ic">approvals</code>, <code class="ic">proposal_hash</code> cobre ação, solicitante, retrato e justificativa; a trilha em <code class="ic">audit[]</code> só cresce.</p></div>
+    <div class="card card-pad"><h3 style="font-size:15px">Sem chave estrangeira</h3><p class="small muted" style="margin-top:6px">A exclusão de um usuário no PostgreSQL deve ser acompanhada de <code class="ic">deleteMany</code> por <code class="ic">user_id</code> em <code class="ic">sessions</code> e <code class="ic">metrics</code> e por <code class="ic">requester_id</code> em <code class="ic">approvals</code>.</p></div>
+    <div class="card card-pad"><h3 style="font-size:15px">Proposta imutável</h3><p class="small muted" style="margin-top:6px">Em <code class="ic">approvals</code>, <code class="ic">proposal_hash</code> cobre ação, solicitante, retrato do estoque e justificativa; a trilha em <code class="ic">audit[]</code> só cresce.</p></div>
   </div></section>${footer()}`;
 }
 
@@ -2622,87 +2665,96 @@ function redisFamilies() {
   const groups = {}; Rd.keys.forEach(k => { const f = famOf(k.pattern); (groups[f] = groups[f] || []).push(k); });
   return { fam, groups };
 }
-/* Chave que guarda IDs (ou hashes) de outra, conforme o KEYSPACE.md. Só é desenhada se as duas existirem. */
+/* Relações entre chaves, tiradas do KEYSPACE.md e dos arquivos de redis/commands (o contrato não as traz em formato de máquina).
+   ref   = a chave de origem guarda IDs ou hashes da chave de destino (kar:user:* e kar:kitchen:* guardam o id de kar:{id};
+           ready, ready:{token} e pending guardam eventIds de job:{eventId}; rt:fam guarda hashes de rt:{hash}).
+   emite = fluxo, não referência: verificar o código apaga a chave do código e grava o token (password-reset.redis).
+   swap  = o snapshot montado é publicado sobre a chave oficial com RENAME (replace.lua). */
 const REDIS_REFS = [
-  ['rt:fam:{familyId}', 'rt:{hashDoToken}', 'hashes'],
-  ['inventra:password-reset:code:{userId}', 'inventra:password-reset:token:{hashDoToken}', 'verificado'],
-  ['kar:user:{userId}', 'kar:{id}', 'ids'],
-  ['kar:user:{userId}:kitchens', 'kar:{id}', 'ids'],
-  ['kar:kitchen:{kitchenId}', 'kar:{id}', 'ids'],
-  ['inventra:product-registration:ready', 'inventra:product-registration:job:{eventId}', 'eventId'],
-  ['inventra:product-registration:ready:{token}', 'inventra:product-registration:job:{eventId}', 'eventId'],
-  ['inventra:product-registration:pending', 'inventra:product-registration:job:{eventId}', 'eventId'],
-  ['inventra:ranking:expiration:{kitchenId}:build:{uuid}', 'inventra:ranking:expiration:{kitchenId}', 'RENAME']
+  ['rt:fam:{familyId}', 'rt:{hashDoToken}', 'hashes', 'ref'],
+  ['inventra:password-reset:code:{userId}', 'inventra:password-reset:token:{hashDoToken}', 'emite', 'emite'],
+  ['kar:user:{userId}', 'kar:{id}', 'ids', 'ref'],
+  ['kar:user:{userId}:kitchens', 'kar:{id}', 'ids', 'ref'],
+  ['kar:kitchen:{kitchenId}', 'kar:{id}', 'ids', 'ref'],
+  ['inventra:product-registration:ready', 'inventra:product-registration:job:{eventId}', 'eventId', 'ref'],
+  ['inventra:product-registration:ready:{token}', 'inventra:product-registration:job:{eventId}', 'eventId', 'ref'],
+  ['inventra:product-registration:pending', 'inventra:product-registration:job:{eventId}', 'eventId', 'ref'],
+  ['inventra:ranking:expiration:{kitchenId}:build:{uuid}', 'inventra:ranking:expiration:{kitchenId}', 'RENAME', 'swap']
 ];
 const redisType = t => {
   const b = /sorted/i.test(t) ? 'ZSET' : /^hash/i.test(t) ? 'HASH' : /^set/i.test(t) ? 'SET' : /^list/i.test(t) ? 'LIST' : /^string/i.test(t) ? 'STRING' : t.toUpperCase();
-  const q = (t.match(/\(([^)]+)\)/) || [])[1];
+  const q = (t.match(/\(([^)]+)\)/) || [])[1] || (/tempor/i.test(t) ? 'temporário' : '');
   return q ? `${b} · ${q}` : b;
 };
 function redisModelSvg() {
   const { fam, groups } = redisFamilies();
-  const fams = Object.keys(groups); const CW = 228, GAP = 14, GUT = 28, CH = 66, TOP = 74;
+  const fams = Object.keys(groups); const CW = 232, GAP = 14, GUT = 30, TOP = 74;
   const out = []; let H = 0;
   fams.forEach((f, ci) => {
-    const x0 = 1 + ci * (CW + GAP); const ks = groups[f]; const w = CW - GUT; const mid = {};
+    const x0 = 1 + ci * (CW + GAP), x = x0 + GUT, w = CW - GUT; const mid = {}; let y = TOP;
     wrapParts((fam[f] || f).split(' '), 26, ' ').slice(0, 2).forEach((l, i) => out.push(svgT(x0 + GUT, 16 + i * 17, l, 't-b')));
     out.push(svgT(x0 + GUT, 58, f + '*', 't-pre'));
-    ks.forEach((k, i) => {
-      const x = x0 + GUT, y = TOP + i * (CH + 10);
+    groups[f].forEach(k => {
       const sfx = k.pattern.startsWith(f) && k.pattern.length > f.length ? k.pattern.slice(f.length) : k.pattern;
       const ty = redisType(k.type); const cw = ty.length * 6.2 + 14;
-      let ttl = k.ttl.replace(/`/g, '').split(/;\s*|,\s*/)[0];
-      if (ttl.length > 26) ttl = ttl.replace(/\s*\([^)]*\)\s*$/, '');
-      out.push(`<a href="#/redis?q=${encodeURIComponent(k.pattern)}" aria-label="${esc(k.pattern)}"><g><title>${esc(`${k.pattern} · ${k.type} · TTL ${k.ttl.replace(/`/g, '')} · ${k.owner}`)}</title>`
-        + `<rect class="bx" x="${x}" y="${y}" width="${w}" height="${CH}" rx="10"/>`
+      const ttlFull = k.ttl.replace(/`/g, ''); const ttl = /^sem TTL/i.test(ttlFull) ? ttlFull : 'TTL ' + ttlFull;
+      const tl = wrapParts(ttl.split(' '), Math.floor((w - 24) / 5.6), ' ');
+      const h = 52 + tl.length * 13;
+      out.push(`<a href="#/redis?q=${encodeURIComponent(k.pattern)}" aria-label="${esc(k.pattern)}"><g><title>${esc(`${k.pattern} · ${k.type} · TTL ${ttlFull} · dono: ${k.owner}`)}</title>`
+        + `<rect class="er-shadow" x="${x}" y="${y + 3}" width="${w}" height="${h}" rx="10"/><rect class="bx" x="${x}" y="${y}" width="${w}" height="${h}" rx="10"/>`
         + svgT(x + 12, y + 21, clip(sfx, Math.floor((w - 24) / 6.9)), 't-k')
         + `<rect class="chip" x="${x + 12}" y="${y + 30}" width="${cw}" height="15" rx="4"/>` + svgT(x + 12 + cw / 2, y + 41, ty, 't-chip', 'middle')
-        + svgT(x + 12, y + 58, clip(/^sem TTL/i.test(ttl) ? ttl : 'TTL ' + ttl, Math.floor((w - 24) / 5.7)), 't-s') + '</g></a>');
-      mid[k.pattern] = y + CH / 2;
+        + tl.map((l, i) => svgT(x + 12, y + 61 + i * 13, l, 't-s')).join('') + '</g></a>');
+      mid[k.pattern] = y + 21; y += h + 10;
     });
-    H = Math.max(H, TOP + ks.length * (CH + 10) - 10);
+    H = Math.max(H, y - 10);
     const refs = REDIS_REFS.filter(([s, d]) => mid[s] != null && mid[d] != null);
     [...new Set(refs.map(r => r[1]))].forEach((d, di) => {
-      const rs = refs.filter(r => r[1] === d); const bx = x0 + 15 + di * 8;
+      const rs = refs.filter(r => r[1] === d); const bx = x0 + 15 + di * 8; const kind = rs[0][3];
+      const cls = kind === 'ref' ? 'e on' : 'e gold dash', mk = kind === 'ref' ? 'rk-on' : 'rk-gold';
       const ys = rs.map(r => mid[r[0]]).concat(mid[d]); const y1 = Math.min(...ys), y2 = Math.max(...ys), ly = (y1 + y2) / 2;
-      out.push(`<path class="e on" d="M${bx},${y1} V${y2}"/>`);
-      rs.forEach(r => out.push(`<path class="e on" d="M${x0 + GUT},${mid[r[0]]} H${bx}"/>`));
-      out.push(`<path class="e on" d="M${bx},${mid[d]} H${x0 + GUT - 1}" marker-end="url(#rk-on)"/>`);
+      out.push(`<path class="${cls}" d="M${bx},${y1} V${y2}"/>`);
+      rs.forEach(r => out.push(`<path class="${cls}" d="M${x},${mid[r[0]]} H${bx}"/>`));
+      out.push(`<path class="${cls}" d="M${bx},${mid[d]} H${x - 1}" marker-end="url(#${mk})"/>`);
       out.push(`<text class="t-e" transform="rotate(-90 ${bx - 4} ${ly})" x="${bx - 4}" y="${ly}" text-anchor="middle">${esc(rs[0][2])}</text>`);
     });
   });
   const VW = fams.length * (CW + GAP) - GAP + 2;
-  return `<svg viewBox="0 0 ${VW} ${H + 2}" role="img" aria-label="Keyspace do Redis por família de chaves, com tipo, TTL e quais chaves guardam IDs de quais." style="min-width:${Math.min(VW, 980)}px">${svgMarkers('rk')}${out.join('')}</svg>`;
+  return `<svg viewBox="0 0 ${VW} ${H + 2}" role="img" aria-label="Keyspace do Redis por família de chaves, com tipo, TTL e quais chaves guardam IDs de quais." style="min-width:${Math.min(VW, 1000)}px">${svgMarkers('rk')}${out.join('')}</svg>`;
 }
-/* Fila de cadastro (INV2-25): cada passo abre o script ou o comando que ele executa. */
+/* Fila de cadastro (INV2-25): cada passo abre o script ou o comando que ele executa. Duas linhas de três passos. */
 function redisQueueSvg() {
   const P = 'redis/scripts/product-queue/', C = 'redis/commands/product-queue/';
   if (!(D.redis && D.redis.keys || []).some(k => /product-registration:pending$/.test(k.pattern))) return '';
   const steps = [
-    ['enqueue.lua', P + 'enqueue.lua', ['job = QUEUED', 'ZADD pending', 'LPUSH ready[:token]']],
-    ['lease.lua', P + 'lease.lua', ['consumer-lock = token', 'renova a cada 5 s']],
-    ['recover.lua', P + 'recover.lua', ['pending → ready:{token}', 'ao assumir a concessão']],
-    ['BRPOP', C + 'consume.redis', ['ready:{token} → eventId', 'update: PROCESSING']],
-    ['PostgreSQL', null, ['INSERT tb_product', 'registration_event_id', 'único: não duplica']],
-    ['update.lua', P + 'update.lua', ['COMPLETED | FAILED', 'ZREM pending', 'FAILED → errors (DLQ)']]
+    ['enqueue.lua', 'API', P + 'enqueue.lua', ['EXISTS job: pedido repetido para aqui', 'INCR sequence · SET job (QUEUED)', 'ZADD pending (score = sequence)', 'LPUSH em ready:{token} se há concessão,', 'senão em ready']],
+    ['consumer-lock', 'consumer', C + 'lease.redis', ['SET consumer-lock <token> NX EX 30', 'lease.lua renova a cada 5 s, só o dono', 'libera ao desligar o consumer']],
+    ['recover.lua', 'consumer', P + 'recover.lua', ['só se o token ainda é o dono', 'ZRANGE pending: todos os pendentes', 'DEL ready e ready:{token}', 'LPUSH de cada eventId em ready:{token}']],
+    ['BRPOP', 'consumer', C + 'consume.redis', ['BRPOP ready:{token} 2 · GET job:{eventId}', 'o eventId sai da lista, fica em pending', 'update.lua: job = PROCESSING']],
+    ['PostgreSQL', 'API', null, ['grava tb_product e registration_event_id', 'na mesma transação; a coluna é única', 'existe só na V010 da API, ainda não', 'em postgre/']],
+    ['update.lua', 'consumer', P + 'update.lua', ['COMPLETED | FAILED: job fica 7 dias', 'ZREM pending (sai da fila)', 'FAILED: LPUSH errors (DLQ), máx. 1.000,', 'expira 7 dias após a última falha']]
   ];
-  const W = 168, G = 26, Y = 44, BH = 100; const out = [];
+  const W = 310, G = 44, BH = 118, Y1 = 4, Y2 = Y1 + BH + 62; const out = [];
+  const pos = i => ({ x: 1 + (i % 3) * (W + G), y: i < 3 ? Y1 : Y2 });
   const link = (href, inner) => href && FILES.has(href) ? `<a href="#/files/${esc(href)}" aria-label="Abrir ${esc(href)}">${inner}</a>` : inner;
-  out.push(svgT(W / 2, 22, 'produtor: API', 't-e', 'middle'));
-  out.push(`<line class="hr" x1="${W + G}" y1="30" x2="${6 * W + 5 * G}" y2="30"/>`, svgT((W + G + 6 * W + 5 * G) / 2, 22, 'consumer com a concessão (um por vez)', 't-e', 'middle'));
-  steps.forEach(([name, href, ls], i) => {
-    const x = 1 + i * (W + G); const pg = name === 'PostgreSQL';
-    out.push(link(href, `<g><rect class="bx${pg ? ' pg' : ''}" x="${x}" y="${Y}" width="${W}" height="${BH}" rx="10"/>`
-      + svgT(x + 12, Y + 22, `${i + 1}  ${name}`, pg ? 't-b t-pg' : 't-b') + ls.map((l, j) => svgT(x + 12, Y + 46 + j * 16, l, 't-n')).join('') + '</g>'));
-    if (i < steps.length - 1) out.push(`<path class="e" d="M${x + W},${Y + BH / 2} H${x + W + G - 1}" marker-end="url(#rq)"/>`);
+  steps.forEach(([name, who, href, ls], i) => {
+    const { x, y } = pos(i); const pg = name === 'PostgreSQL';
+    out.push(link(href, `<g><rect class="er-shadow" x="${x}" y="${y + 3}" width="${W}" height="${BH}" rx="10"/><rect class="bx${pg ? ' pg' : ''}" x="${x}" y="${y}" width="${W}" height="${BH}" rx="10"/>`
+      + svgT(x + 14, y + 24, `${i + 1}  ${name}`, pg ? 't-b t-pg' : 't-b') + svgT(x + W - 14, y + 24, who, 't-e', 'end')
+      + ls.map((l, j) => svgT(x + 14, y + 48 + j * 16, l, 't-n')).join('') + '</g>'));
+    if (i % 3 < 2) out.push(`<path class="e" d="M${x + W},${y + BH / 2} H${x + W + G - 1}" marker-end="url(#rq)"/>`);
   });
-  const xq = 1 + 3 * (W + G) + 34;
-  out.push(`<path class="e gold" d="M${xq},${Y + BH} V${Y + 158}" marker-end="url(#rq-gold)"/>`, svgT(xq + 8, Y + 132, 'payload inválido', 't-e'));
-  out.push(link(P + 'quarantine.lua', `<g><rect class="bx" x="${xq - 150}" y="${Y + 160}" width="220" height="46" rx="10"/>${svgT(xq - 138, Y + 179, 'quarantine.lua', 't-b')}${svgT(xq - 138, Y + 196, 'payload → errors · ZREM pending', 't-n')}</g>`));
-  const x6 = 1 + 5 * (W + G) + W / 2, x4 = 1 + 3 * (W + G) + W - 24;
-  out.push(`<path class="e on dash" d="M${x6},${Y + BH} V${Y + 140} H${x4} V${Y + BH + 2}" marker-end="url(#rq-on)"/>`, svgT((x6 + x4) / 2, Y + 158, 'falha transitória: nova tentativa com backoff, até 5', 't-e', 'middle'));
-  const VW = 6 * W + 5 * G + 2;
-  return `<svg viewBox="0 0 ${VW} ${Y + 212}" role="img" aria-label="Fila de cadastro: enqueue, concessão, recuperação, BRPOP, gravação no PostgreSQL e update, com quarentena de payload inválido e nova tentativa em falha transitória." style="min-width:${Math.min(VW, 980)}px">${svgMarkers('rq')}${out.join('')}</svg>`;
+  const a = pos(2), b = pos(3), mY = (a.y + BH + b.y) / 2;
+  out.push(`<path class="e" d="M${a.x + W / 2},${a.y + BH} V${mY} H${b.x + W / 2} V${b.y - 1}" marker-end="url(#rq)"/>`);
+  // payload ausente ou inválido: quarentena direto para a DLQ, sem nova tentativa
+  const q = { x: b.x, y: Y2 + BH + 44, h: 78 };
+  out.push(`<path class="e gold" d="M${b.x + W / 2},${b.y + BH} V${q.y - 1}" marker-end="url(#rq-gold)"/>`, svgT(b.x + W / 2 + 10, b.y + BH + 28, 'payload ausente ou JSON inválido', 't-e'));
+  out.push(link(P + 'quarantine.lua', `<g><rect class="er-shadow" x="${q.x}" y="${q.y + 3}" width="${W}" height="${q.h}" rx="10"/><rect class="bx" x="${q.x}" y="${q.y}" width="${W}" height="${q.h}" rx="10"/>${svgT(q.x + 14, q.y + 24, 'quarantine.lua', 't-b')}${svgT(q.x + 14, q.y + 46, 'LPUSH errors (até 4 KiB do payload), sem retry', 't-n')}${svgT(q.x + 14, q.y + 62, 'ZREM pending · job expira em 7 dias', 't-n')}</g>`));
+  // falha transitória de banco: regra da API; o repositório só guarda attempts e nextAttemptAt no job
+  const c = pos(5), n = { x: c.x, y: q.y, h: q.h };
+  out.push(`<rect class="bx dash" x="${n.x}" y="${n.y}" width="${W}" height="${n.h}" rx="10"/>${svgT(n.x + 14, n.y + 22, 'Falha transitória de banco', 't-b')}${svgT(n.x + 14, n.y + 42, 'a API tenta até 5 vezes, com backoff', 't-n')}${svgT(n.x + 14, n.y + 58, '(job.attempts, job.nextAttemptAt) e só então', 't-n')}${svgT(n.x + 14, n.y + 74, 'grava FAILED; até lá o pedido segue em pending', 't-n')}`);
+  const VW = 3 * W + 2 * G + 2;
+  return `<svg viewBox="0 0 ${VW} ${q.y + q.h + 8}" role="img" aria-label="Fila de cadastro: enqueue, concessão do consumer, recuperação, BRPOP, gravação no PostgreSQL e update, com quarentena de payload inválido e nova tentativa em falha transitória." style="min-width:${Math.min(VW, 960)}px">${svgMarkers('rq')}${out.join('')}</svg>`;
 }
 function pageRedisModel() {
   crumbs([['Redis', '#/redis'], ['Modelagem']]);
@@ -2711,17 +2763,19 @@ function pageRedisModel() {
     desc: 'O keyspace desenhado a partir da tabela do <code class="ic">KEYSPACE.md</code>: uma coluna por família de chaves, com tipo e TTL, e as linhas que mostram qual chave guarda IDs de qual. Clique numa chave para ver a linha dela no keyspace.',
     actions: `<a class="btn" href="#/redis">${icon('key')}Keyspace</a><a class="btn" href="#/docs/redis/docs/KEYSPACE.md">${icon('doc')}KEYSPACE.md</a>` }) +
   `<section class="section nsq-first"><div class="nsq">${redisModelSvg()}</div>
-    <div class="nsq-legend"><span><span class="lg lg-link solid"></span>a chave à esquerda guarda IDs, hashes ou o código da chave apontada</span><span><span class="mono lg-ref">{userId}</span> <span class="mono lg-ref">{kitchenId}</span> IDs do PostgreSQL, sem chave estrangeira</span></div></section>
-  ${q ? `<section class="section"><div class="section-head"><h2 class="section-title">Fila de cadastro, passo a passo</h2><p>Cada <code class="ic">.lua</code> roda inteiro de uma vez no Redis. O token de <code class="ic">consumer-lock</code> é a cerca: quem perdeu a concessão não confirma nem recupera itens. Clique num passo para abrir o script.</p></div><div class="nsq">${q}</div></section>` : ''}
+    <div class="nsq-legend"><span><span class="lg lg-link solid"></span>a chave de origem guarda IDs ou hashes da chave de destino</span><span><span class="lg lg-gold"></span>fluxo, não referência: o código verificado é apagado e emite o token; o snapshot montado é publicado com <code class="ic">RENAME</code></span><span><span class="mono lg-ref">{userId}</span> <span class="mono lg-ref">{kitchenId}</span> IDs do PostgreSQL, sem chave estrangeira</span></div></section>
+  ${q ? `<section class="section"><div class="section-head"><h2 class="section-title">Fila de cadastro, passo a passo</h2><p>Cada <code class="ic">.lua</code> roda inteiro de uma vez no Redis. O token de <code class="ic">consumer-lock</code> é a cerca: quem perdeu a concessão não confirma nem recupera itens. Clique num passo para abrir o script.</p></div><div class="nsq">${q}</div>
+    <div class="nsq-legend"><span><span class="lg lg-link solid"></span>fluxo normal</span><span><span class="lg lg-gold"></span>desvio para a DLQ</span><span><span class="lg lg-dash"></span>regra da API, sem script no repositório</span></div></section>` : ''}
   <section class="section"><div class="grid g3">
-    <div class="card card-pad"><h3 style="font-size:15px">noeviction</h3><p class="small muted" style="margin-top:6px">Pedidos pendentes, histórico de acesso e DLQ não têm TTL. Com memória cheia o Redis recusa a escrita, em vez de apagar dado em silêncio.</p></div>
-    <div class="card card-pad"><h3 style="font-size:15px">Órfãos somem sozinhos</h3><p class="small muted" style="margin-top:6px">Usuário ou cozinha removidos no PostgreSQL deixam chaves até o TTL ou até a limpeza que a API faz na leitura.</p></div>
-    <div class="card card-pad"><h3 style="font-size:15px">Fonte da verdade</h3><p class="small muted" style="margin-top:6px">O Redis guarda estado operacional. Perdê-lo derruba sessões e filas em andamento, mas o cadastro continua no PostgreSQL.</p></div>
+    <div class="card card-pad"><h3 style="font-size:15px">noeviction</h3><p class="small muted" style="margin-top:6px">Pedidos pendentes e histórico de acesso decidido não têm TTL. Com memória cheia o Redis recusa a escrita (a API responde 503), em vez de apagar dado em silêncio.</p></div>
+    <div class="card card-pad"><h3 style="font-size:15px">Sem chave estrangeira</h3><p class="small muted" style="margin-top:6px">Usuário ou cozinha removido no PostgreSQL deixa chaves órfãs até o TTL ou a limpeza na leitura. As sem TTL (pedidos de acesso decididos) exigem apagar <code class="ic">kar:user:{userId}*</code> na exclusão do usuário.</p></div>
+    <div class="card card-pad"><h3 style="font-size:15px">Fonte da verdade</h3><p class="small muted" style="margin-top:6px">O Redis guarda estado operacional. Perdê-lo derruba as sessões, os pedidos de acesso pendentes, os jobs ainda na fila e as redefinições de senha em andamento; o cadastro continua no PostgreSQL.</p></div>
   </div></section>${footer()}`;
 }
 
 /* ---------- Neo4j ---------- */
-/* Elementos da seção 04 da especificação + unicidade e índices dos dicionários de schema. */
+/* Elementos da seção 04 da especificação, unicidade e índices dos dicionários de schema e as propriedades
+   que o Cypher de projection/ realmente grava (SET e chaves do MERGE). */
 function neoElements() {
   const spec = FILES.get(NEO_SPEC); const rows = {};
   const tbl = spec ? mdTable(mdSection(spec.content, '04'), '| Elemento') : '';
@@ -2730,44 +2784,71 @@ function neoElements() {
     if (c.length >= 4) rows[c[0].replace(/^:/, '')] = { key: c[1], props: c[2].split(/,\s*/).filter(Boolean), src: c[3] };
   });
   const schema = ['neo4j/constraints/create_constraints.cypher', 'neo4j/indexes/create_indexes.cypher'].map(p => (FILES.get(p) || { content: '' }).content).join('\n');
-  const uniq = {}, idx = {};
+  const uniq = {}, idx = {}, projected = {};
   for (const m of schema.matchAll(/FOR \(\w+:(\w+)\) REQUIRE \w+\.(\w+) IS UNIQUE/g)) (uniq[m[1]] = uniq[m[1]] || []).push(m[2]);
   for (const m of schema.matchAll(/FOR \(\w+:(\w+)\) ON \(\w+\.(\w+)\)/g)) (idx[m[1]] = idx[m[1]] || []).push(m[2]);
-  return { rows, uniq, idx };
+  neoFiles().filter(f => f.path.startsWith('neo4j/projection/')).forEach(f => {
+    const c = f.content.split('\n').filter(l => !l.trim().startsWith('//')).join('\n'); const lab = {};
+    for (const m of c.matchAll(/[(\[](\w+):(\w+)/g)) lab[m[1]] = m[2];
+    for (const m of c.matchAll(/\b(\w+)\.(\w+)\s*=(?!=)/g)) if (lab[m[1]]) (projected[lab[m[1]]] = projected[lab[m[1]]] || new Set()).add(m[2]);
+    for (const m of c.matchAll(/[(\[]\w*:(\w+)\s*\{(\w+):/g)) (projected[m[1]] = projected[m[1]] || new Set()).add(m[2]);
+  });
+  return { rows, uniq, idx, projected };
 }
 function neoModelSvg() {
-  const { rows, uniq, idx } = neoElements();
-  const nodes = [['Requisition', 150], ['Product', 520], ['Supplier', 890]];
-  const edges = [['REQUESTS', 0, 1], ['SUPPLIES', 2, 1]];
-  const CY = 92, R = 52, PY = CY + R + 30; const out = []; let bottom = PY;
-  const nodeProps = n => { const e = rows[n] || { key: 'id', props: [] }; return [e.key].concat(e.props).map(p => p + ((uniq[n] || []).includes(p) ? '  · único' : (idx[n] || []).includes(p) ? '  · índice' : '')); };
-  nodes.forEach(([n, x]) => {
-    out.push(`<circle class="gn" cx="${x}" cy="${CY}" r="${R}"/>`, svgT(x, CY + 5, ':' + n, 't-b t-node', 'middle'));
-    const ps = nodeProps(n);
-    ps.forEach((p, i) => out.push(svgT(x, PY + i * 16, p, i === 0 ? 't-f req' : 't-f', 'middle')));
-    bottom = Math.max(bottom, PY + (ps.length - 1) * 16);
+  const { rows, uniq, idx, projected } = neoElements();
+  const NX = [132, 560, 988], NODES = ['Requisition', 'Product', 'Supplier'], EDGES = [['REQUESTS', 0, 1], ['SUPPLIES', 2, 1]];
+  const CY = 64, R = 46, CARD_Y = 150, NW = 190, RW = 210; const out = []; let bottom = CARD_Y;
+  /* propriedades que o Cypher grava; o que a especificação lista e nenhum Cypher grava vira nota */
+  const props = n => {
+    const e = rows[n] || { key: 'id', props: [] }, p = projected[n] || new Set(); const pair = /\+/.test(e.key);
+    const shown = [...new Set((pair ? [] : [e.key]).concat(e.props.filter(x => p.has(x))).concat([...p].filter(x => x !== e.key && !e.props.includes(x))))];
+    return { key: e.key, pair, shown, specOnly: e.props.filter(x => !p.has(x)), src: e.src };
+  };
+  const card = (cx, cw, n, rel) => {
+    const p = props(n); const x = cx - cw / 2; const notes = [];
+    if (p.pair) notes.push('uma aresta por par fornecedor → produto');
+    if (p.specOnly.length) notes.push(`${p.specOnly.join(', ')}: na especificação, mas nenhum Cypher grava`);
+    const nl = notes.flatMap(t => wrapParts(t.split(' '), Math.floor((cw - 24) / 5.8), ' '));
+    const h = 10 + p.shown.length * NQ_ROW + (nl.length ? nl.length * 13 + 10 : 0) + 4;
+    let s = nqCard(x, CARD_Y, cw, h, '', null, { head: false });
+    p.shown.forEach((name, i) => {
+      const key = p.key === name ? (rel ? 'KEY' : 'UQ') : (idx[n] || []).includes(name) ? 'IX' : '';
+      const tip = key === 'UQ' ? 'Constraint de unicidade' : key === 'IX' ? 'Índice' : key === 'KEY' ? 'Chave da aresta no MERGE' : '';
+      s += nqRow(x, CARD_Y + 5 + i * NQ_ROW, cw, { name, key, keyTip: tip });
+    });
+    nl.forEach((l, i) => { s += svgT(x + 14, CARD_Y + 5 + p.shown.length * NQ_ROW + 16 + i * 13, l, 't-n it'); });
+    out.push(s); bottom = Math.max(bottom, CARD_Y + h);
+    return { x: cx, y: CARD_Y + h, src: p.src };
+  };
+  const ends = [];
+  NODES.forEach((n, i) => {
+    out.push(`<circle class="gn" cx="${NX[i]}" cy="${CY}" r="${R}"/>`, svgT(NX[i], CY + 5, ':' + n, 't-b t-node', 'middle'));
+    ends.push(card(NX[i], NW, n, false));
   });
-  edges.forEach(([t, a, b]) => {
-    const xa = nodes[a][1], xb = nodes[b][1], dir = xb > xa ? 1 : -1, mx = (xa + xb) / 2;
-    out.push(`<path class="e on strong" d="M${xa + dir * R},${CY} H${xb - dir * (R + 2)}" marker-end="url(#nm-on)"/>`, svgT(mx, CY - 10, ':' + t, 't-k t-rel', 'middle'));
-    const e = rows[t] || { key: '', props: [] };
-    const ls = [(e.key || '') + (e.key ? '  · chave' : '')].filter(Boolean).concat(wrapParts(e.props, 30));
-    ls.forEach((l, i) => out.push(svgT(mx, CY + 22 + i * 16, l, i === 0 ? 't-n req' : 't-n', 'middle')));
+  EDGES.forEach(([t, a, b]) => {
+    const xa = NX[a], xb = NX[b], dir = xb > xa ? 1 : -1, mx = (xa + xb) / 2;
+    out.push(`<path class="e on strong" d="M${xa + dir * R},${CY} H${xb - dir * (R + 2)}" marker-end="url(#nm-on)"/>`, svgT(mx, CY - 12, `[:${t}]`, 't-k t-rel', 'middle'));
+    ends.push(card(mx, RW, t, true));
   });
-  const TY = bottom + 40;
-  const srcs = nodes.map(([n, x]) => [rows[n] && rows[n].src, x, PY + (nodeProps(n).length - 1) * 16 + 8])
-    .concat(edges.map(([t, a, b]) => { const e = rows[t] || { props: [] }; return [e.src, (nodes[a][1] + nodes[b][1]) / 2, CY + 22 + wrapParts(e.props, 30).length * 16 + 4]; }));
-  srcs.forEach(([src, x, top]) => {
-    if (!src) return;
-    const w = Math.max(130, src.length * 7.4 + 24);
-    out.push(`<path class="e dash gold" d="M${x},${TY} V${top}" marker-end="url(#nm-gold)"/>`, `<rect class="bx pg" x="${x - w / 2}" y="${TY}" width="${w}" height="34" rx="10"/>`, svgT(x, TY + 22, src, 't-f t-pg', 'middle'));
+  const TY = bottom + 46;
+  ends.forEach(e => {
+    if (!e.src) return;
+    const w = Math.max(132, e.src.length * 7.4 + 24);
+    out.push(`<path class="e dash gold" d="M${e.x},${TY} V${e.y + 2}" marker-end="url(#nm-gold)"/>`, `<rect class="er-shadow" x="${e.x - w / 2}" y="${TY + 3}" width="${w}" height="32" rx="10"/><rect class="bx pg" x="${e.x - w / 2}" y="${TY}" width="${w}" height="32" rx="10"/>`, svgT(e.x, TY + 21, e.src, 't-f t-pg', 'middle'));
   });
-  return `<svg viewBox="0 0 1040 ${TY + 36}" role="img" aria-label="Modelo do grafo: Requisition REQUESTS Product e Supplier SUPPLIES Product, com propriedades, unicidade e índices; cada elemento vem de uma tabela do PostgreSQL, e as tabelas de ligação viram arestas." style="min-width:860px">${svgMarkers('nm')}${out.join('')}</svg>`;
+  return `<svg viewBox="0 0 ${NX[2] + NW / 2 + 2} ${TY + 38}" role="img" aria-label="Modelo do grafo: Requisition REQUESTS Product e Supplier SUPPLIES Product, com as propriedades que a projeção grava, unicidade e índices; cada elemento vem de uma tabela do PostgreSQL e as tabelas de ligação viram arestas." style="min-width:900px">${svgMarkers('nm')}${out.join('')}</svg>`;
 }
-/* Que elemento cada arquivo de projeção grava (MERGE) ou apaga (DELETE), lido do próprio Cypher. */
+/* Que elemento cada arquivo de projeção grava (MERGE) ou apaga (DELETE), lido do próprio Cypher.
+   Os nomes dos eventos do outbox vêm da tabela do neo4j/README.md. */
 function neoProjectionSvg() {
   const files = neoFiles().filter(f => f.path.startsWith('neo4j/projection/') && f.lang === 'cypher');
   if (!files.length) return '';
+  const readme = FILES.get('neo4j/README.md'); const evOf = {};
+  if (readme) readme.content.split('\n').forEach(l => {
+    const m = l.match(/^\|\s*(.+?)\s*\|\s*\[`([\w.]+\.cypher)`\]/);
+    if (m) evOf[m[2]] = (m[1].match(/`([A-Z_]+)`/g) || []).map(s => s.replace(/`/g, ''));
+  });
   const els = ['Requisition', 'Product', 'Supplier', 'REQUESTS', 'SUPPLIES'];
   const { rows } = neoElements();
   const acts = files.map(f => {
@@ -2775,29 +2856,28 @@ function neoProjectionSvg() {
     const merge = new Set(), del = new Set();
     c.split('\n').forEach(l => { if (/^\s*MERGE\b/.test(l)) for (const m of l.matchAll(/[([]\w*:(\w+)/g)) merge.add(m[1]); });
     for (const m of c.matchAll(/\bDELETE\s+(\w+)/g)) { const b = c.match(new RegExp('[(\\[]' + m[1] + ':(\\w+)')); if (b) del.add(b[1]); }
-    return { f, merge, del };
+    return { f, merge, del, ev: evOf[f.path.split('/').pop()] || [f.path.split('/').pop().replace('.cypher', '').toUpperCase()] };
   });
-  const EW = 270, EH = 42, RX = 600, RW = 250, ROW = 54, TOP = 34;
+  const EW = 330, EH = 44, RX = 660, RW = 250, ROW = 58, TOP = 34;
   const n = Math.max(acts.length, els.length);
   const ey = i => TOP + (n - acts.length) * ROW / 2 + i * ROW, ly = i => TOP + (n - els.length) * ROW / 2 + i * ROW;
-  const out = [svgT(1, 16, 'EVENTO DO OUTBOX · ARQUIVO', 't-lbl'), svgT(RX, 16, 'ELEMENTO DO GRAFO · ORIGEM', 't-lbl')];
+  const out = [svgT(1, 16, 'EVENTO DO OUTBOX · ARQUIVO', 't-lbl'), svgT(RX, 16, 'ELEMENTO DO GRAFO · TABELA DE ORIGEM', 't-lbl')];
   acts.forEach((a, i) => {
-    [...a.merge].concat([...a.del]).forEach((el, j) => {
+    [...a.merge].map(el => [el, false]).concat([...a.del].map(el => [el, true])).forEach(([el, isDel]) => {
       const k = els.indexOf(el); if (k < 0) return;
-      const isDel = a.del.has(el) && !a.merge.has(el) || j >= a.merge.size;
-      const y1 = ey(i) + EH / 2, y2 = ly(k) + EH / 2;
+      const o = isDel ? 9 : 0, y1 = ey(i) + EH / 2 + o, y2 = ly(k) + EH / 2 + o;
       out.push(`<path class="e ${isDel ? 'dash gold' : 'on'}" d="M${1 + EW},${y1} C${(EW + RX) / 2},${y1} ${(EW + RX) / 2},${y2} ${RX - 2},${y2}" marker-end="url(#np${isDel ? '-gold' : '-on'})"/>`);
     });
   });
   acts.forEach((a, i) => {
-    const name = a.f.path.split('/').pop();
-    out.push(`<a href="#/files/${esc(a.f.path)}" aria-label="Abrir ${esc(a.f.path)}"><g><rect class="bx" x="1" y="${ey(i)}" width="${EW}" height="${EH}" rx="10"/>${svgT(14, ey(i) + 18, name.replace('.cypher', '').toUpperCase(), 't-k')}${svgT(14, ey(i) + 33, name, 't-n')}</g></a>`);
+    const name = a.f.path.split('/').pop(); const t = a.ev.join(' · ');
+    out.push(`<a href="#/files/${esc(a.f.path)}" aria-label="Abrir ${esc(a.f.path)}"><g><rect class="er-shadow" x="1" y="${ey(i) + 3}" width="${EW}" height="${EH}" rx="10"/><rect class="bx" x="1" y="${ey(i)}" width="${EW}" height="${EH}" rx="10"/>${svgT(14, ey(i) + 19, clip(t, 44), 't-k', '', t)}${svgT(14, ey(i) + 35, name, 't-n')}</g></a>`);
   });
   els.forEach((el, k) => {
     const rel = el === el.toUpperCase();
-    out.push(`<rect class="${rel ? 'bx' : 'bx gnb'}" x="${RX}" y="${ly(k)}" width="${RW}" height="${EH}" rx="${rel ? 10 : 21}"/>${svgT(RX + 16, ly(k) + 18, rel ? `-[:${el}]->` : `(:${el})`, 't-k t-node')}${svgT(RX + 16, ly(k) + 33, (rows[el] || {}).src || '', 't-n')}`);
+    out.push(`<rect class="er-shadow" x="${RX}" y="${ly(k) + 3}" width="${RW}" height="${EH}" rx="${rel ? 10 : 22}"/><rect class="${rel ? 'bx' : 'bx gnb'}" x="${RX}" y="${ly(k)}" width="${RW}" height="${EH}" rx="${rel ? 10 : 22}"/>${svgT(RX + 16, ly(k) + 19, rel ? `[:${el}]` : `(:${el})`, 't-k t-node')}${svgT(RX + 16, ly(k) + 35, (rows[el] || {}).src || '', 't-n')}`);
   });
-  return `<svg viewBox="0 0 ${RX + RW + 2} ${TOP + n * ROW}" role="img" aria-label="Cada evento do outbox e o elemento do grafo que o arquivo de projeção grava com MERGE ou apaga com DELETE." style="min-width:760px">${svgMarkers('np')}${out.join('')}</svg>`;
+  return `<svg viewBox="0 0 ${RX + RW + 2} ${TOP + n * ROW}" role="img" aria-label="Cada evento do outbox e o elemento do grafo que o arquivo de projeção grava com MERGE ou apaga com DELETE." style="min-width:820px">${svgMarkers('np')}${out.join('')}</svg>`;
 }
 function pageNeo4jModel() {
   crumbs([['Neo4j', '#/neo4j'], ['Modelagem']]);
@@ -2805,11 +2885,11 @@ function pageNeo4jModel() {
   const dec = spec ? (mdSection(spec.content, '04').split('### Decisões de modelagem')[1] || '').match(/^- .+$/gm) || [] : [];
   const proj = neoProjectionSvg();
   return head({ kicker: icon('graph') + ' Neo4j 5 · projeção de leitura', title: 'Modelagem',
-    desc: 'Rótulos, relacionamentos e propriedades da seção 04 da especificação, com unicidade e índices lidos de <code class="ic">constraints/</code> e <code class="ic">indexes/</code>. O PostgreSQL continua a fonte da verdade: cada elemento do grafo vem de uma tabela e pode ser reconstruído.',
+    desc: 'Rótulos, relacionamentos e propriedades que a projeção grava, com unicidade e índices lidos de <code class="ic">constraints/</code> e <code class="ic">indexes/</code>. O PostgreSQL continua a fonte da verdade: cada elemento do grafo vem de uma tabela e pode ser reconstruído.',
     badges: '<span class="badge warn">proposta implementável</span><span class="badge outline">endpoint ainda não existe na API</span>',
     actions: `<a class="btn" href="#/neo4j">${icon('graph')}Cobertura</a><a class="btn" href="#/docs/${NEO_SPEC}">${icon('doc')}Especificação</a>` }) +
   `<section class="section nsq-first"><div class="nsq">${neoModelSvg()}</div>
-    <div class="nsq-legend"><span><span class="lg lg-node"></span>rótulo de nó</span><span><span class="lg lg-link solid"></span>relacionamento, com as propriedades da aresta embaixo</span><span><span class="lg lg-gold"></span>projetado a partir da tabela</span></div></section>
+    <div class="nsq-legend"><span><span class="lg lg-node"></span>rótulo de nó</span><span><span class="lg lg-link solid"></span>relacionamento</span><span><b class="lg-key pk">UQ</b>constraint de unicidade</span><span><b class="lg-key ix">IX</b>índice</span><span><b class="lg-key pk">KEY</b>chave da aresta no <code class="ic">MERGE</code></span><span><span class="lg lg-gold"></span>projetado a partir da tabela</span></div></section>
   ${proj ? `<section class="section"><div class="section-head"><h2 class="section-title">Projeção a partir do PostgreSQL</h2><p>O que cada evento do outbox grava ou apaga, lido do próprio Cypher em <code class="ic">projection/</code>. Todos usam <code class="ic">MERGE</code> pelas chaves do PostgreSQL: reprocessar um evento não duplica nó nem aresta. Clique num evento para abrir o arquivo.</p></div><div class="nsq">${proj}</div>
     <div class="nsq-legend"><span><span class="lg lg-link solid"></span><code class="ic">MERGE</code> grava ou atualiza</span><span><span class="lg lg-gold"></span><code class="ic">DELETE</code> remove</span></div></section>` : ''}
   ${dec.length ? `<section class="section"><div class="section-head"><h2 class="section-title">Decisões de modelagem</h2></div><div class="grid g3">${dec.map(l => { const m = l.match(/^- \*\*(.+?):?\*\*:?\s*(.*)$/); return m ? `<div class="card card-pad"><h3 style="font-size:15px">${inline(m[1].replace(/:$/, ''), NEO_SPEC)}</h3><p class="small muted" style="margin-top:6px">${inline(m[2], NEO_SPEC)}</p></div>` : ''; }).join('')}</div></section>` : ''}
