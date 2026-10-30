@@ -553,6 +553,58 @@ a.rich{font-family:var(--mono);font-size:.92em;color:var(--brand-ink);text-decor
 .idx-card{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
 details.raw{margin-top:22px}
 details.raw summary{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--brand);margin-bottom:12px}
+/* modelagem do MongoDB, Redis e Neo4j */
+.nsq-first{margin-top:0}
+.nsq{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--er-bg);padding:18px;box-shadow:var(--shadow-sm)}
+.nsq svg{display:block;width:100%;height:auto}
+.nsq a,.nsq a:hover{text-decoration:none}
+.nsq a:hover .bx,.nsq a:focus-visible .bx{stroke:var(--brand);stroke-width:1.6}
+.nsq a:focus{outline:none}
+.nsq text{fill:var(--ink)}
+.nsq .t-h{font:500 15px var(--mono)}
+.nsq .t-s{font:400 11px var(--font);fill:var(--muted)}
+.nsq .t-b{font:600 13px var(--font)}
+.nsq .t-f{font:400 11.5px var(--mono)}
+.nsq .req{font-weight:600}
+.nsq .t-ty{font:400 11px var(--mono);fill:var(--t-type)}
+.nsq .t-ref,.nsq .t-pre{font:500 11px var(--mono);fill:var(--brand)}
+.nsq .t-n{font:400 10.5px var(--mono);fill:var(--muted)}
+.nsq .t-k{font:600 11.5px var(--mono)}
+.nsq .t-lbl{font:600 9.5px var(--mono);fill:var(--faint);letter-spacing:.08em}
+.nsq .t-e{font:500 10.5px var(--mono);fill:var(--faint)}
+.nsq .t-chip{font:600 9.5px var(--mono);fill:var(--brand-ink);letter-spacing:.03em}
+.nsq .t-chip.uq{fill:var(--yellow-ink)}
+.nsq .t-node,.nsq .t-rel{fill:var(--brand-ink)}
+.nsq .t-pg{fill:var(--gold)}
+.nsq .bx{fill:var(--er-box);stroke:var(--line-2);stroke-width:1;transition:stroke .15s}
+.nsq .bx.dash{stroke-dasharray:5 4}
+.nsq .bx.pg{fill:var(--yellow-soft);stroke:var(--gold);stroke-opacity:.55}
+.nsq .bx.gnb{fill:var(--brand-soft);stroke:var(--brand-line)}
+.nsq .bx-h{fill:var(--er-head)}
+.nsq .hr{stroke:var(--line);stroke-width:1}
+.nsq .nest{fill:none;stroke:var(--brand-line);stroke-dasharray:3 3}
+.nsq .chip{fill:var(--brand-soft)}
+.nsq .chip.uq{fill:var(--yellow-soft)}
+.nsq .gn{fill:var(--brand-soft);stroke:var(--brand);stroke-width:1.6}
+.nsq .dot{fill:var(--brand)}
+.nsq .e{fill:none;stroke:var(--er-edge);stroke-width:1.4}
+.nsq .e.on{stroke:var(--brand)}
+.nsq .e.strong{stroke-width:2.2}
+.nsq .e.gold{stroke:var(--gold)}
+.nsq .e.dash{stroke-dasharray:5 4}
+.nsq .ah{fill:var(--er-edge)}
+.nsq .ah.on{fill:var(--brand)}
+.nsq .ah.gold{fill:var(--gold)}
+.nsq-legend{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:12px;font-size:13px;color:var(--muted)}
+.nsq-legend>span{display:inline-flex;align-items:center;gap:7px}
+.nsq-legend .lg-ref{color:var(--brand);font-size:12px}
+.nsq-legend .lg{display:inline-block;width:22px;height:12px;flex:none}
+.nsq-legend .lg-nest{border:1px dashed var(--brand-line);border-radius:3px}
+.nsq-legend .lg-dash{border:1px dashed var(--line-2);border-radius:3px}
+.nsq-legend .lg-link{height:0;border-top:2px dashed var(--brand)}
+.nsq-legend .lg-link.solid{border-top-style:solid}
+.nsq-legend .lg-gold{height:0;border-top:2px dashed var(--gold)}
+.nsq-legend .lg-node{width:14px;height:14px;border-radius:50%;background:var(--brand-soft);border:1.5px solid var(--brand)}
 /* neo4j */
 .g-graph svg{width:100%;height:auto;display:block}
 .g-col{font:600 10.5px var(--mono);fill:var(--faint);letter-spacing:.08em}
@@ -801,7 +853,7 @@ const LANG_META = {
   sql: { label: 'SQL', color: '#6A00FF' }, js: { label: 'JavaScript', color: '#F2C200' }, json: { label: 'JSON', color: '#A672FF' },
   bash: { label: 'Shell', color: '#3D0099' }, md: { label: 'Markdown', color: '#A09AB2' }, redis: { label: 'Redis', color: '#D2BBFF' },
   conf: { label: 'Config', color: '#DDD6EA' }, yaml: { label: 'YAML', color: '#A672FF' }, python: { label: 'Python', color: '#F2C200' },
-  cypher: { label: 'Cypher', color: '#A672FF' }, text: { label: 'Texto', color: '#DDD6EA' }, image: { label: 'Imagem', color: '#F2C200' }
+  cypher: { label: 'Cypher', color: '#A672FF' }, lua: { label: 'Lua', color: '#3D0099' }, text: { label: 'Texto', color: '#DDD6EA' }, image: { label: 'Imagem', color: '#F2C200' }
 };
 
 /* =========================================================
@@ -1000,6 +1052,7 @@ const RULES = {
   conf: [[/#[^\n]*/, 'com'], [/^[ \t]*[\w-]+/, 'key'], [/"[^"\n]*"/, 'str'], [/\b\d+[kmgb]*\b/i, 'num'], [/\b(?:yes|no|everysec|always|noeviction)\b/, 'kw']],
   cypher: [[/\/\/[^\n]*/, 'com'], [/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/, 'str'], [/:[A-Z][\w]*/, 'type'], [/\$\w+/, 'var'], [/\b\d+(?:\.\d+)?\b/, 'num'], [/[A-Za-z_]\w*/, 'word']]
 };
+RULES.lua = [[/--[^\n]*/, 'com'], [/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/, 'str'], [/\b(?:local|function|if|then|else|elseif|end|return|for|in|do|while|not|and|or|nil|true|false)\b/, 'kw'], [/\b\d+(?:\.\d+)?\b/, 'num']];
 RULES.json = RULES.js;
 const RE_CACHE = {};
 function tokenize(code, lang) {
@@ -1226,9 +1279,9 @@ function navHtml() {
       ['#/pg/constraints', 'constraint', 'Constraints', CONS.length],
       ['#/pg/migrations', 'layers', 'Migrations', MIGRATIONS.length]
     ]),
-    g('MongoDB', ENGINE.mongo.color, mongoCollections().map(c => ['#/mongo/' + c.name, c.control ? 'layers' : 'collection', c.name, null])),
-    g('Redis', ENGINE.redis.color, [['#/redis', 'redis', 'Keyspace', (D.redis && D.redis.keys || []).length]]),
-    g('Neo4j', ENGINE.neo4j.color, [['#/neo4j', 'graph', 'Cobertura de fornecedores', null]]),
+    g('MongoDB', ENGINE.mongo.color, [['#/mongo/model', 'model', 'Modelagem', null]].concat(mongoCollections().map(c => ['#/mongo/' + c.name, c.control ? 'layers' : 'collection', c.name, null]))),
+    g('Redis', ENGINE.redis.color, [['#/redis/model', 'model', 'Modelagem', null], ['#/redis', 'redis', 'Keyspace', (D.redis && D.redis.keys || []).length]]),
+    g('Neo4j', ENGINE.neo4j.color, [['#/neo4j/model', 'model', 'Modelagem', null], ['#/neo4j', 'graph', 'Cobertura de fornecedores', null]]),
     g('Repositório', null, [
       ['#/docs', 'doc', 'Documentação', DOCS.length],
       ['#/files', 'code', 'Scripts e arquivos', (D.files || []).length],
@@ -1246,7 +1299,7 @@ function setActiveNav(path) {
   const alias = { '#/pg/table': '#/pg/tables', '#/pg/view': '#/pg/views', '#/pg/trigger': '#/pg/triggers', '#/pg/migration': '#/pg/migrations' };
   if (!best) { const k = Object.keys(alias).find(k => want.startsWith(k + '/')); if (k) best = $(`#nav a[data-nav="${alias[k]}"]`); }
   if (!best && want.startsWith('#/pg/routine/')) { const r = R.get(want.split('/')[3]); best = $(`#nav a[data-nav="${r && r.kind === 'procedure' ? '#/pg/procedures' : '#/pg/functions'}"]`); }
-  if (!best && want === '#/mongo') best = $('#nav a[data-nav^="#/mongo/"]');
+  if (!best && want === '#/mongo') best = $('#nav a[data-nav^="#/mongo/"]:not([data-nav="#/mongo/model"])');
   if (best) { best.classList.add('active'); best.setAttribute('aria-current', 'page'); }
 }
 function crumbs(items) {
@@ -1372,7 +1425,7 @@ function pageOverview() {
     <div class="section-head"><h2 class="section-title">Bancos</h2><p>O PostgreSQL é a fonte da verdade do negócio; MongoDB e Redis guardam <code class="ic">id_user</code> e <code class="ic">id_kitchen</code> como referência, sem chave estrangeira; o Neo4j é uma projeção de leitura reconstruível.</p></div>
     <div class="grid g4">
       ${engine('pg', '#/pg/tables', 'PostgreSQL ' + esc((PG.server_version || '16').split(' ')[0]) + ' · API Spring (Flyway)', 'Cadastro, estoque, requisições, pré-listas de compra, inventário, alertas, auditoria, catálogo de dados e Data Mart para BI.', `<span class="badge sm">${PG.tables.length} tabelas</span><span class="badge sm">${PG.views.length} views</span><span class="badge sm">${PG.routines.length} rotinas</span><span class="badge sm ok">CI</span>`)}
-      ${engine('mongo', '#/mongo', 'MongoDB 8 · IA (IAI)', 'Banco dbIAI: conversas do chat e métricas de custo e latência por requisição, com contrato $jsonSchema.', `<span class="badge sm">${mongo.collections.length} coleções</span><span class="badge sm">${mongo.indexes.length} índices</span><span class="badge sm ok">CI</span>`)}
+      ${engine('mongo', '#/mongo', 'MongoDB 8 · IA (IAI)', 'Banco dbIAI: conversas do chat, métricas de custo e latência por requisição e propostas de escrita que esperam aprovação, com contrato $jsonSchema.', `<span class="badge sm">${mongo.collections.length} coleções</span><span class="badge sm">${mongo.indexes.length} índices</span><span class="badge sm ok">CI</span>`)}
       ${engine('redis', '#/redis', 'Redis 7 · API Spring', 'Refresh tokens, redefinição de senha, pedidos de acesso à cozinha, fila de cadastro por código de barras e ranking de validade.', `<span class="badge sm">${redis.keys.length} chaves</span><span class="badge sm">${redis.commands.length} operações</span><span class="badge sm outline">sem schema</span>`)}
       ${engine('neo4j', '#/neo4j', 'Neo4j 5 · projeção (proposta)', 'Cobertura de fornecedores por requisição: Requisition → Product ← Supplier, reconstruível a partir do PostgreSQL.', `<span class="badge sm">3 rótulos · 2 relações</span><span class="badge sm">${neoFiles().filter(f => f.lang === 'cypher').length} Cypher</span><span class="badge sm ok">CI</span><span class="badge sm warn">proposta</span>`)}
     </div>
@@ -1449,7 +1502,7 @@ function archSvg() {
     ${box(268, 222, 150, 'IAI', 'Python · multiagente', '')}
     ${box(528, 30, 160, 'PostgreSQL', 'cadastro · estoque', 'db', ENGINE.pg.color)}
     ${box(528, 132, 160, 'Redis', 'tokens · acesso · fila', 'db', ENGINE.redis.color)}
-    ${box(528, 222, 160, 'MongoDB', 'dbIAI · sessions · metrics', 'db', ENGINE.mongo.color)}
+    ${box(528, 222, 160, 'MongoDB', 'dbIAI · chat · propostas', 'db', ENGINE.mongo.color)}
     ${box(758, 30, 190, 'Power BI / Metabase', 'dim_* · fact_*', '')}
     ${box(758, 132, 190, 'Neo4j', 'proposta · cobertura', 'db', ENGINE.neo4j.color)}
     ${box(842, 248, 120, 'Este repo', 'migrations', '', '#FFD93D')}
@@ -2196,7 +2249,7 @@ function bsonSample(v) {
 /* Coleções do dbIAI: as de contrato ($jsonSchema) e a de controle da esteira (criada pela V001, sem validador). */
 function mongoCollections() {
   const M = D.mongo || { collections: [] };
-  const order = ['sessions', 'metrics'];
+  const order = ['sessions', 'metrics', 'approvals'];
   const list = M.collections.slice().sort((a, b) => (order.indexOf(a.name) + 1 || 99) - (order.indexOf(b.name) + 1 || 99));
   if (FILES.has('mongo/migrations/V001__init_dbiai.js') && !list.some(c => c.name === 'schema_migrations')) {
     list.push({ name: 'schema_migrations', file: 'mongo/migrations/V001__init_dbiai.js', control: true,
@@ -2263,8 +2316,8 @@ function pageMongo(coll) {
     return `<a class="coll${x === c ? ' active' : ''}" href="#/mongo/${x.name}"${x === c ? ' aria-current="page"' : ''}><span class="coll-ico">${icon(x.control ? 'layers' : 'leaf')}</span><span class="coll-tx"><b>${esc(x.name)}</b><small>${x.control ? 'controle da esteira' : `${n} campos · ${ni} ${ni === 1 ? 'índice' : 'índices'}`}</small></span></a>`;
   }).join('')}</nav>`;
   return head({ kicker: icon('leaf') + ' MongoDB 8 · banco dbIAI', title: 'Coleções',
-    desc: 'Banco de documentos da IA: o log das conversas do chat e as métricas de cada requisição, sem nada do estoque. Escolha uma coleção para ver a estrutura do documento, um exemplo e os índices.',
-    actions: `<a class="btn" href="#/docs/mongo/docs/MONGO_MODEL.md">${icon('doc')}MONGO_MODEL.md</a>` }) +
+    desc: 'Banco de documentos da IA: as conversas do chat, as métricas de cada requisição e as propostas de escrita que esperam aprovação, sem nada do estoque. Escolha uma coleção para ver a estrutura do documento, um exemplo e os índices.',
+    actions: `<a class="btn" href="#/mongo/model">${icon('model')}Modelagem</a><a class="btn" href="#/docs/mongo/docs/MONGO_MODEL.md">${icon('doc')}MONGO_MODEL.md</a>` }) +
   `<div class="stats" style="margin-bottom:24px">
     <div class="stat"><span class="v">${cols.length}</span><span class="l">${icon('leaf')}coleções</span></div>
     <div class="stat"><span class="v">${totalFields}</span><span class="l">${icon('col')}campos no contrato</span></div>
@@ -2298,16 +2351,13 @@ function pageMongo(coll) {
 function pageRedis() {
   crumbs([['Redis']]);
   const Rd = D.redis || { keys: [], commands: [] };
-  const ks = FILES.get('redis/docs/KEYSPACE.md'); const fam = {};
-  if (ks) ks.content.split('\n').forEach(l => { const m = l.match(/^##\s+(.+?)\s+\(`([^`]+?)\*`\)/); if (m) fam[m[2]] = m[1]; });
-  const famOf = p => Object.keys(fam).sort((a, b) => b.length - a.length).find(k => p.startsWith(k)) || p.split(':')[0];
-  const groups = {}; Rd.keys.forEach(k => { const f = famOf(k.pattern); (groups[f] = groups[f] || []).push(k); });
+  const { fam, groups } = redisFamilies();
   const typeCls = t => /hash/i.test(t) ? 'brand' : /sorted/i.test(t) ? 'warn' : /^set/i.test(t) ? 'info' : /list/i.test(t) ? 'ok' : '';
   const keyHtml = p => esc(p).replace(/\{(\w+)\}/g, '<span class="t-var">{$1}</span>');
   const cmdGroups = [...new Set(Rd.commands.map(c => c.group))];
   const conf = FILES.get('redis/config/redis.conf');
   return head({ kicker: icon('redis') + ' Redis 7 · Aiven for Valkey', title: 'Keyspace', desc: 'O Redis não tem schema: este é o contrato de cada chave que a API Spring grava (estrutura, TTL e dono), e os comandos de cada operação passo a passo.',
-    actions: `<a class="btn" href="#/docs/redis/docs/KEYSPACE.md">${icon('doc')}KEYSPACE.md</a>` }) +
+    actions: `<a class="btn" href="#/redis/model">${icon('model')}Modelagem</a><a class="btn" href="#/docs/redis/docs/KEYSPACE.md">${icon('doc')}KEYSPACE.md</a>` }) +
   `<div class="stats" style="margin-bottom:22px"><div class="stat"><span class="v">${Rd.keys.length}</span><span class="l">${icon('key')}padrões de chave</span></div><div class="stat"><span class="v">${Object.keys(groups).length}</span><span class="l">${icon('layers')}famílias</span></div><div class="stat"><span class="v">${Rd.commands.length}</span><span class="l">${icon('terminal')}operações</span></div><div class="stat"><span class="v">noeviction</span><span class="l">${icon('shield')}maxmemory-policy</span></div></div>
   <div data-scope>${filterBar('Filtrar chaves, tipos ou classes…')}
   ${Object.entries(groups).map(([f, ks2]) => `<section class="section" data-group><div class="section-head"><h2 class="section-title">${esc(fam[f] || f)}</h2><span class="badge mono">${esc(f)}*</span></div>
@@ -2440,7 +2490,7 @@ function pageNeo4j(params) {
   return head({ kicker: icon('graph') + ' Neo4j 5 · projeção de leitura', title: 'Cobertura de fornecedores',
     desc: 'Dada uma requisição, quais fornecedores atendem mais produtos, o que cada um deixa descoberto, o custo de referência e o prazo máximo da parte coberta. O PostgreSQL continua a fonte da verdade; o grafo é reconstruível.',
     badges: '<span class="badge warn">proposta implementável</span><span class="badge brand">Cypher testado no neo4j:5</span><span class="badge outline">endpoint ainda não existe na API</span>',
-    actions: `<a class="btn" href="#/docs/${NEO_SPEC}">${icon('doc')}COBERTURA_FORNECEDORES.md</a><a class="btn" href="#/docs/neo4j/README.md">${icon('doc')}README</a>` }) +
+    actions: `<a class="btn" href="#/neo4j/model">${icon('model')}Modelagem</a><a class="btn" href="#/docs/${NEO_SPEC}">${icon('doc')}COBERTURA_FORNECEDORES.md</a><a class="btn" href="#/docs/neo4j/README.md">${icon('doc')}README</a>` }) +
   `<div class="stats" style="margin-bottom:22px">
     <div class="stat"><span class="v">3</span><span class="l">${icon('graph')}rótulos de nó</span></div>
     <div class="stat"><span class="v">2</span><span class="l">${icon('link')}relacionamentos</span></div>
@@ -2453,6 +2503,319 @@ function pageNeo4j(params) {
   ${panel('n4', 'overview', overview)}${panel('n4', 'spec', specTab)}${panel('n4', 'cypher', cypherTab)}${panel('n4', 'pipeline', pipelineTab)}
   ${footer()}`;
 }
+/* =========================================================
+   MODELAGEM DO MONGODB, REDIS E NEO4J
+   Diagramas desenhados a partir dos contratos versionados (schemas e índices do dbIAI,
+   tabela do KEYSPACE.md, especificação e Cypher do Neo4j): mudou o contrato, muda o desenho.
+   ========================================================= */
+const svgT = (x, y, s, cls, anchor, title) => `<text class="${cls}" x="${x}" y="${y}"${anchor ? ` text-anchor="${anchor}"` : ''}>${title ? `<title>${esc(title)}</title>` : ''}${esc(s)}</text>`;
+const svgMarkers = id => `<defs>${[['', ''], ['-on', 'on'], ['-gold', 'gold']].map(([s, c]) => `<marker id="${id}${s}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah ${c}" d="M0,0 L10,5 L0,10 z"/></marker>`).join('')}</defs>`;
+const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+/* Junta as partes em linhas de até max caracteres. */
+function wrapParts(parts, max, sep = ' · ') {
+  const out = []; let cur = '';
+  parts.forEach(p => { const next = cur ? cur + sep + p : p; if (cur && next.length > max) { out.push(cur); cur = p; } else cur = next; });
+  if (cur) out.push(cur);
+  return out;
+}
+
+/* ---------- MongoDB ---------- */
+const MONGO_REF = { user_id: 'tb_user.id_user', requester_id: 'tb_user.id_user', kitchen_id: 'tb_kitchen' };
+function bsonShort(v) {
+  if (v.enum) {
+    const vals = v.enum.filter(x => x !== null); const s = vals.join(' | ');
+    return (s.length <= 24 ? s : `enum · ${vals.length}`) + (vals.length < v.enum.length ? '?' : '');
+  }
+  let ts = [].concat(v.bsonType || 'any'); const opt = ts.includes('null'); ts = ts.filter(t => t !== 'null');
+  let t = ts.join(' | ');
+  if (ts.length && ts.every(x => x === 'int' || x === 'long')) t = 'int';
+  else if (ts.length > 1 && ts.every(x => ['int', 'long', 'double', 'decimal'].includes(x))) t = 'number';
+  else if (t === 'array') t = v.items ? bsonShort(v.items) + '[]' : 'array';
+  return t + (opt ? '?' : '');
+}
+function mongoBox(c, x, y, w, idx) {
+  const s = c.schema || {}; const req = s.required || []; const body = []; const rows = {};
+  const per = Math.floor((w - 44) / 6.5);
+  let cy = y + 66;
+  Object.entries(s.properties || {}).forEach(([k, v]) => {
+    const isArr = v.bsonType === 'array';
+    const kids = v.bsonType === 'object' ? v.properties : isArr && v.items && v.items.bsonType === 'object' ? v.items.properties : null;
+    const fcls = 't-f' + (req.includes(k) ? ' req' : '');
+    if (kids && Object.keys(kids).length) {
+      const ls = wrapParts(Object.keys(kids), per);
+      const gh = 24 + ls.length * 15;
+      body.push(`<rect class="nest" x="${x + 10}" y="${cy - 15}" width="${w - 20}" height="${gh}" rx="6"/>`,
+        svgT(x + 20, cy, k + (isArr ? ' [ ]' : ' { }'), fcls, '', v.description), svgT(x + w - 20, cy, isArr ? 'array embutido' : 'objeto embutido', 't-n', 'end'));
+      ls.forEach((l, i) => body.push(svgT(x + 28, cy + 17 + i * 15, l, 't-n')));
+      rows[k] = cy - 4; cy += gh + 8;
+    } else {
+      const ref = MONGO_REF[k];
+      body.push(svgT(x + 14, cy, k, fcls, '', v.description), svgT(x + w - 14, cy, ref ? '→ ' + ref : bsonShort(v), ref ? 't-ref' : 't-ty', 'end'));
+      rows[k] = cy - 4; cy += 19;
+    }
+  });
+  if (!Object.keys(s.properties || {}).length) { body.push(svgT(x + 14, cy, 'sem contrato $jsonSchema', 't-n')); cy += 19; }
+  if (idx.length) {
+    body.push(`<line class="hr" x1="${x}" y1="${cy - 8}" x2="${x + w}" y2="${cy - 8}"/>`, svgT(x + 14, cy + 9, 'ÍNDICES', 't-lbl'));
+    cy += 30;
+    idx.forEach(i => {
+      const ls = wrapParts(i.keys.map(([k, d]) => k + (d < 0 ? ' ↓' : '')), Math.floor((w - (i.unique ? 86 : 28)) / 6.5));
+      if (i.unique) body.push(`<rect class="chip uq" x="${x + w - 66}" y="${cy - 11}" width="52" height="15" rx="4"/>`, svgT(x + w - 40, cy, 'UNIQUE', 't-chip uq', 'middle'));
+      ls.forEach((l, j) => body.push(svgT(x + 14, cy + j * 15, l, 't-n', '', i.comment || i.name)));
+      cy += ls.length * 15 + 9;
+    });
+  }
+  const h = cy - y - 4;
+  const sub = c.ghost ? 'só índice, ainda sem contrato' : c.control ? 'controle da esteira' : (s.description || '').split(/[.;:]/)[0];
+  const frame = `<rect class="bx${c.ghost || c.control ? ' dash' : ''}" x="${x}" y="${y}" width="${w}" height="${h}" rx="12"/>`
+    + `<path class="bx-h" d="M${x + 1},${y + 46} V${y + 12} Q${x + 1},${y + 1} ${x + 12},${y + 1} H${x + w - 12} Q${x + w - 1},${y + 1} ${x + w - 1},${y + 12} V${y + 46} Z"/>`
+    + `<line class="hr" x1="${x}" y1="${y + 46}" x2="${x + w}" y2="${y + 46}"/>`
+    + svgT(x + 14, y + 21, c.name, 't-h') + svgT(x + 14, y + 37, clip(sub, Math.floor((w - 28) / 5.6)), 't-s', '', s.description);
+  const g = `<g>${frame}${body.join('')}</g>`;
+  return { svg: c.ghost ? g : `<a href="#/mongo/${esc(c.name)}" aria-label="Abrir a coleção ${esc(c.name)}">${g}</a>`, h, rows };
+}
+function mongoModelSvg() {
+  const M = D.mongo || { collections: [], indexes: [] };
+  const cols = mongoCollections().slice();
+  // coleção que só aparece em create_indexes.js (ex.: notifications) entra tracejada
+  [...new Set(M.indexes.map(i => i.collection))].filter(n => !cols.some(c => c.name === n)).forEach(n => cols.push({ name: n, ghost: true, schema: {} }));
+  const W = 320, GAP = 52, N = Math.min(3, cols.length) || 1;
+  const heights = Array(N).fill(0); const placed = [];
+  cols.forEach(c => {
+    const k = heights.indexOf(Math.min(...heights));
+    const x = 1 + k * (W + GAP), y = heights[k] ? heights[k] + 24 : 1;
+    const b = mongoBox(c, x, y, W, M.indexes.filter(i => i.collection === c.name));
+    placed.push({ k, x, ...b }); heights[k] = y + b.h;
+  });
+  // o mesmo session_id liga a conversa às métricas de cada requisição dela
+  const links = [];
+  const has = placed.filter(p => p.rows.session_id != null).sort((a, b) => a.k - b.k);
+  for (let i = 1; i < has.length; i++) {
+    const a = has[i - 1], b = has[i]; if (b.k !== a.k + 1) continue;
+    const x1 = a.x + W, y1 = a.rows.session_id, x2 = b.x, y2 = b.rows.session_id, mx = x1 + GAP / 2;
+    links.push(`<path class="e on dash" d="M${x1},${y1} H${mx} V${y2} H${x2}"/><circle class="dot" cx="${x1}" cy="${y1}" r="3.5"/><circle class="dot" cx="${x2}" cy="${y2}" r="3.5"/>`);
+  }
+  const VW = N * W + (N - 1) * GAP + 2, VH = Math.max(...heights) + 2;
+  return `<svg viewBox="0 0 ${VW} ${VH}" role="img" aria-label="Coleções do dbIAI com campos, objetos e arrays embutidos e índices; user_id e kitchen_id apontam para o PostgreSQL sem chave estrangeira." style="min-width:${Math.min(VW, 900)}px">${links.join('')}${placed.map(p => p.svg).join('')}</svg>`;
+}
+function pageMongoModel() {
+  crumbs([['MongoDB', '#/mongo'], ['Modelagem']]);
+  return head({ kicker: icon('leaf') + ' MongoDB 8 · banco dbIAI', title: 'Modelagem',
+    desc: 'As coleções do dbIAI lado a lado, desenhadas a partir dos contratos <code class="ic">$jsonSchema</code> e de <code class="ic">create_indexes.js</code>. Cada documento é lido e gravado inteiro, por isso as listas de tamanho variável ficam embutidas em vez de virar coleção. Clique numa coleção para ver cada campo.',
+    actions: `<a class="btn" href="#/docs/mongo/docs/MONGO_MODEL.md">${icon('doc')}MONGO_MODEL.md</a>` }) +
+  `<section class="section nsq-first"><div class="nsq">${mongoModelSvg()}</div>
+    <div class="nsq-legend"><span><b class="mono">negrito</b> campo obrigatório</span><span><span class="mono lg-ref">→ tb_user</span> referência ao PostgreSQL, sem chave estrangeira</span><span><span class="lg lg-nest"></span>objeto ou array embutido</span><span><span class="lg lg-link"></span>mesmo <code class="ic">session_id</code></span><span><span class="lg lg-dash"></span>sem contrato ou de controle</span></div></section>
+  <section class="section"><div class="grid g3">
+    <div class="card card-pad"><h3 style="font-size:15px">Isolamento por cozinha</h3><p class="small muted" style="margin-top:6px">Desde a V002 toda consulta da IAI filtra por <code class="ic">kitchen_id</code>: o histórico de uma conversa nunca atravessa cozinhas.</p></div>
+    <div class="card card-pad"><h3 style="font-size:15px">Sem chave estrangeira</h3><p class="small muted" style="margin-top:6px">Apagar um usuário no PostgreSQL exige <code class="ic">deleteMany</code> por <code class="ic">user_id</code> e <code class="ic">requester_id</code> nas coleções daqui.</p></div>
+    <div class="card card-pad"><h3 style="font-size:15px">Proposta imutável</h3><p class="small muted" style="margin-top:6px">Em <code class="ic">approvals</code>, <code class="ic">proposal_hash</code> cobre ação, solicitante, retrato e justificativa; a trilha em <code class="ic">audit[]</code> só cresce.</p></div>
+  </div></section>${footer()}`;
+}
+
+/* ---------- Redis ---------- */
+/* Famílias de chave pelos títulos "## Nome (`prefixo*`)" do KEYSPACE.md. */
+function redisFamilies() {
+  const Rd = D.redis || { keys: [] };
+  const ks = FILES.get('redis/docs/KEYSPACE.md'); const fam = {};
+  if (ks) ks.content.split('\n').forEach(l => { const m = l.match(/^##\s+(.+?)\s+\(`([^`]+?)\*`\)/); if (m) fam[m[2]] = m[1]; });
+  const famOf = p => Object.keys(fam).sort((a, b) => b.length - a.length).find(k => p.startsWith(k)) || p.split(':')[0];
+  const groups = {}; Rd.keys.forEach(k => { const f = famOf(k.pattern); (groups[f] = groups[f] || []).push(k); });
+  return { fam, groups };
+}
+/* Chave que guarda IDs (ou hashes) de outra, conforme o KEYSPACE.md. Só é desenhada se as duas existirem. */
+const REDIS_REFS = [
+  ['rt:fam:{familyId}', 'rt:{hashDoToken}', 'hashes'],
+  ['inventra:password-reset:code:{userId}', 'inventra:password-reset:token:{hashDoToken}', 'verificado'],
+  ['kar:user:{userId}', 'kar:{id}', 'ids'],
+  ['kar:user:{userId}:kitchens', 'kar:{id}', 'ids'],
+  ['kar:kitchen:{kitchenId}', 'kar:{id}', 'ids'],
+  ['inventra:product-registration:ready', 'inventra:product-registration:job:{eventId}', 'eventId'],
+  ['inventra:product-registration:ready:{token}', 'inventra:product-registration:job:{eventId}', 'eventId'],
+  ['inventra:product-registration:pending', 'inventra:product-registration:job:{eventId}', 'eventId'],
+  ['inventra:ranking:expiration:{kitchenId}:build:{uuid}', 'inventra:ranking:expiration:{kitchenId}', 'RENAME']
+];
+const redisType = t => {
+  const b = /sorted/i.test(t) ? 'ZSET' : /^hash/i.test(t) ? 'HASH' : /^set/i.test(t) ? 'SET' : /^list/i.test(t) ? 'LIST' : /^string/i.test(t) ? 'STRING' : t.toUpperCase();
+  const q = (t.match(/\(([^)]+)\)/) || [])[1];
+  return q ? `${b} · ${q}` : b;
+};
+function redisModelSvg() {
+  const { fam, groups } = redisFamilies();
+  const fams = Object.keys(groups); const CW = 228, GAP = 14, GUT = 28, CH = 66, TOP = 74;
+  const out = []; let H = 0;
+  fams.forEach((f, ci) => {
+    const x0 = 1 + ci * (CW + GAP); const ks = groups[f]; const w = CW - GUT; const mid = {};
+    wrapParts((fam[f] || f).split(' '), 26, ' ').slice(0, 2).forEach((l, i) => out.push(svgT(x0 + GUT, 16 + i * 17, l, 't-b')));
+    out.push(svgT(x0 + GUT, 58, f + '*', 't-pre'));
+    ks.forEach((k, i) => {
+      const x = x0 + GUT, y = TOP + i * (CH + 10);
+      const sfx = k.pattern.startsWith(f) && k.pattern.length > f.length ? k.pattern.slice(f.length) : k.pattern;
+      const ty = redisType(k.type); const cw = ty.length * 6.2 + 14;
+      let ttl = k.ttl.replace(/`/g, '').split(/;\s*|,\s*/)[0];
+      if (ttl.length > 26) ttl = ttl.replace(/\s*\([^)]*\)\s*$/, '');
+      out.push(`<a href="#/redis?q=${encodeURIComponent(k.pattern)}" aria-label="${esc(k.pattern)}"><g><title>${esc(`${k.pattern} · ${k.type} · TTL ${k.ttl.replace(/`/g, '')} · ${k.owner}`)}</title>`
+        + `<rect class="bx" x="${x}" y="${y}" width="${w}" height="${CH}" rx="10"/>`
+        + svgT(x + 12, y + 21, clip(sfx, Math.floor((w - 24) / 6.9)), 't-k')
+        + `<rect class="chip" x="${x + 12}" y="${y + 30}" width="${cw}" height="15" rx="4"/>` + svgT(x + 12 + cw / 2, y + 41, ty, 't-chip', 'middle')
+        + svgT(x + 12, y + 58, clip(/^sem TTL/i.test(ttl) ? ttl : 'TTL ' + ttl, Math.floor((w - 24) / 5.7)), 't-s') + '</g></a>');
+      mid[k.pattern] = y + CH / 2;
+    });
+    H = Math.max(H, TOP + ks.length * (CH + 10) - 10);
+    const refs = REDIS_REFS.filter(([s, d]) => mid[s] != null && mid[d] != null);
+    [...new Set(refs.map(r => r[1]))].forEach((d, di) => {
+      const rs = refs.filter(r => r[1] === d); const bx = x0 + 15 + di * 8;
+      const ys = rs.map(r => mid[r[0]]).concat(mid[d]); const y1 = Math.min(...ys), y2 = Math.max(...ys), ly = (y1 + y2) / 2;
+      out.push(`<path class="e on" d="M${bx},${y1} V${y2}"/>`);
+      rs.forEach(r => out.push(`<path class="e on" d="M${x0 + GUT},${mid[r[0]]} H${bx}"/>`));
+      out.push(`<path class="e on" d="M${bx},${mid[d]} H${x0 + GUT - 1}" marker-end="url(#rk-on)"/>`);
+      out.push(`<text class="t-e" transform="rotate(-90 ${bx - 4} ${ly})" x="${bx - 4}" y="${ly}" text-anchor="middle">${esc(rs[0][2])}</text>`);
+    });
+  });
+  const VW = fams.length * (CW + GAP) - GAP + 2;
+  return `<svg viewBox="0 0 ${VW} ${H + 2}" role="img" aria-label="Keyspace do Redis por família de chaves, com tipo, TTL e quais chaves guardam IDs de quais." style="min-width:${Math.min(VW, 980)}px">${svgMarkers('rk')}${out.join('')}</svg>`;
+}
+/* Fila de cadastro (INV2-25): cada passo abre o script ou o comando que ele executa. */
+function redisQueueSvg() {
+  const P = 'redis/scripts/product-queue/', C = 'redis/commands/product-queue/';
+  if (!(D.redis && D.redis.keys || []).some(k => /product-registration:pending$/.test(k.pattern))) return '';
+  const steps = [
+    ['enqueue.lua', P + 'enqueue.lua', ['job = QUEUED', 'ZADD pending', 'LPUSH ready[:token]']],
+    ['lease.lua', P + 'lease.lua', ['consumer-lock = token', 'renova a cada 5 s']],
+    ['recover.lua', P + 'recover.lua', ['pending → ready:{token}', 'ao assumir a concessão']],
+    ['BRPOP', C + 'consume.redis', ['ready:{token} → eventId', 'update: PROCESSING']],
+    ['PostgreSQL', null, ['INSERT tb_product', 'registration_event_id', 'único: não duplica']],
+    ['update.lua', P + 'update.lua', ['COMPLETED | FAILED', 'ZREM pending', 'FAILED → errors (DLQ)']]
+  ];
+  const W = 168, G = 26, Y = 44, BH = 100; const out = [];
+  const link = (href, inner) => href && FILES.has(href) ? `<a href="#/files/${esc(href)}" aria-label="Abrir ${esc(href)}">${inner}</a>` : inner;
+  out.push(svgT(W / 2, 22, 'produtor: API', 't-e', 'middle'));
+  out.push(`<line class="hr" x1="${W + G}" y1="30" x2="${6 * W + 5 * G}" y2="30"/>`, svgT((W + G + 6 * W + 5 * G) / 2, 22, 'consumer com a concessão (um por vez)', 't-e', 'middle'));
+  steps.forEach(([name, href, ls], i) => {
+    const x = 1 + i * (W + G); const pg = name === 'PostgreSQL';
+    out.push(link(href, `<g><rect class="bx${pg ? ' pg' : ''}" x="${x}" y="${Y}" width="${W}" height="${BH}" rx="10"/>`
+      + svgT(x + 12, Y + 22, `${i + 1}  ${name}`, pg ? 't-b t-pg' : 't-b') + ls.map((l, j) => svgT(x + 12, Y + 46 + j * 16, l, 't-n')).join('') + '</g>'));
+    if (i < steps.length - 1) out.push(`<path class="e" d="M${x + W},${Y + BH / 2} H${x + W + G - 1}" marker-end="url(#rq)"/>`);
+  });
+  const xq = 1 + 3 * (W + G) + 34;
+  out.push(`<path class="e gold" d="M${xq},${Y + BH} V${Y + 158}" marker-end="url(#rq-gold)"/>`, svgT(xq + 8, Y + 132, 'payload inválido', 't-e'));
+  out.push(link(P + 'quarantine.lua', `<g><rect class="bx" x="${xq - 150}" y="${Y + 160}" width="220" height="46" rx="10"/>${svgT(xq - 138, Y + 179, 'quarantine.lua', 't-b')}${svgT(xq - 138, Y + 196, 'payload → errors · ZREM pending', 't-n')}</g>`));
+  const x6 = 1 + 5 * (W + G) + W / 2, x4 = 1 + 3 * (W + G) + W - 24;
+  out.push(`<path class="e on dash" d="M${x6},${Y + BH} V${Y + 140} H${x4} V${Y + BH + 2}" marker-end="url(#rq-on)"/>`, svgT((x6 + x4) / 2, Y + 158, 'falha transitória: nova tentativa com backoff, até 5', 't-e', 'middle'));
+  const VW = 6 * W + 5 * G + 2;
+  return `<svg viewBox="0 0 ${VW} ${Y + 212}" role="img" aria-label="Fila de cadastro: enqueue, concessão, recuperação, BRPOP, gravação no PostgreSQL e update, com quarentena de payload inválido e nova tentativa em falha transitória." style="min-width:${Math.min(VW, 980)}px">${svgMarkers('rq')}${out.join('')}</svg>`;
+}
+function pageRedisModel() {
+  crumbs([['Redis', '#/redis'], ['Modelagem']]);
+  const q = redisQueueSvg();
+  return head({ kicker: icon('redis') + ' Redis 7 · Aiven for Valkey', title: 'Modelagem',
+    desc: 'O keyspace desenhado a partir da tabela do <code class="ic">KEYSPACE.md</code>: uma coluna por família de chaves, com tipo e TTL, e as linhas que mostram qual chave guarda IDs de qual. Clique numa chave para ver a linha dela no keyspace.',
+    actions: `<a class="btn" href="#/redis">${icon('key')}Keyspace</a><a class="btn" href="#/docs/redis/docs/KEYSPACE.md">${icon('doc')}KEYSPACE.md</a>` }) +
+  `<section class="section nsq-first"><div class="nsq">${redisModelSvg()}</div>
+    <div class="nsq-legend"><span><span class="lg lg-link solid"></span>a chave à esquerda guarda IDs, hashes ou o código da chave apontada</span><span><span class="mono lg-ref">{userId}</span> <span class="mono lg-ref">{kitchenId}</span> IDs do PostgreSQL, sem chave estrangeira</span></div></section>
+  ${q ? `<section class="section"><div class="section-head"><h2 class="section-title">Fila de cadastro, passo a passo</h2><p>Cada <code class="ic">.lua</code> roda inteiro de uma vez no Redis. O token de <code class="ic">consumer-lock</code> é a cerca: quem perdeu a concessão não confirma nem recupera itens. Clique num passo para abrir o script.</p></div><div class="nsq">${q}</div></section>` : ''}
+  <section class="section"><div class="grid g3">
+    <div class="card card-pad"><h3 style="font-size:15px">noeviction</h3><p class="small muted" style="margin-top:6px">Pedidos pendentes, histórico de acesso e DLQ não têm TTL. Com memória cheia o Redis recusa a escrita, em vez de apagar dado em silêncio.</p></div>
+    <div class="card card-pad"><h3 style="font-size:15px">Órfãos somem sozinhos</h3><p class="small muted" style="margin-top:6px">Usuário ou cozinha removidos no PostgreSQL deixam chaves até o TTL ou até a limpeza que a API faz na leitura.</p></div>
+    <div class="card card-pad"><h3 style="font-size:15px">Fonte da verdade</h3><p class="small muted" style="margin-top:6px">O Redis guarda estado operacional. Perdê-lo derruba sessões e filas em andamento, mas o cadastro continua no PostgreSQL.</p></div>
+  </div></section>${footer()}`;
+}
+
+/* ---------- Neo4j ---------- */
+/* Elementos da seção 04 da especificação + unicidade e índices dos dicionários de schema. */
+function neoElements() {
+  const spec = FILES.get(NEO_SPEC); const rows = {};
+  const tbl = spec ? mdTable(mdSection(spec.content, '04'), '| Elemento') : '';
+  tbl.split('\n').slice(2).forEach(l => {
+    const c = l.split('|').slice(1, -1).map(x => x.trim().replace(/`/g, ''));
+    if (c.length >= 4) rows[c[0].replace(/^:/, '')] = { key: c[1], props: c[2].split(/,\s*/).filter(Boolean), src: c[3] };
+  });
+  const schema = ['neo4j/constraints/create_constraints.cypher', 'neo4j/indexes/create_indexes.cypher'].map(p => (FILES.get(p) || { content: '' }).content).join('\n');
+  const uniq = {}, idx = {};
+  for (const m of schema.matchAll(/FOR \(\w+:(\w+)\) REQUIRE \w+\.(\w+) IS UNIQUE/g)) (uniq[m[1]] = uniq[m[1]] || []).push(m[2]);
+  for (const m of schema.matchAll(/FOR \(\w+:(\w+)\) ON \(\w+\.(\w+)\)/g)) (idx[m[1]] = idx[m[1]] || []).push(m[2]);
+  return { rows, uniq, idx };
+}
+function neoModelSvg() {
+  const { rows, uniq, idx } = neoElements();
+  const nodes = [['Requisition', 150], ['Product', 520], ['Supplier', 890]];
+  const edges = [['REQUESTS', 0, 1], ['SUPPLIES', 2, 1]];
+  const CY = 92, R = 52, PY = CY + R + 30; const out = []; let bottom = PY;
+  const nodeProps = n => { const e = rows[n] || { key: 'id', props: [] }; return [e.key].concat(e.props).map(p => p + ((uniq[n] || []).includes(p) ? '  · único' : (idx[n] || []).includes(p) ? '  · índice' : '')); };
+  nodes.forEach(([n, x]) => {
+    out.push(`<circle class="gn" cx="${x}" cy="${CY}" r="${R}"/>`, svgT(x, CY + 5, ':' + n, 't-b t-node', 'middle'));
+    const ps = nodeProps(n);
+    ps.forEach((p, i) => out.push(svgT(x, PY + i * 16, p, i === 0 ? 't-f req' : 't-f', 'middle')));
+    bottom = Math.max(bottom, PY + (ps.length - 1) * 16);
+  });
+  edges.forEach(([t, a, b]) => {
+    const xa = nodes[a][1], xb = nodes[b][1], dir = xb > xa ? 1 : -1, mx = (xa + xb) / 2;
+    out.push(`<path class="e on strong" d="M${xa + dir * R},${CY} H${xb - dir * (R + 2)}" marker-end="url(#nm-on)"/>`, svgT(mx, CY - 10, ':' + t, 't-k t-rel', 'middle'));
+    const e = rows[t] || { key: '', props: [] };
+    const ls = [(e.key || '') + (e.key ? '  · chave' : '')].filter(Boolean).concat(wrapParts(e.props, 30));
+    ls.forEach((l, i) => out.push(svgT(mx, CY + 22 + i * 16, l, i === 0 ? 't-n req' : 't-n', 'middle')));
+  });
+  const TY = bottom + 40;
+  const srcs = nodes.map(([n, x]) => [rows[n] && rows[n].src, x, PY + (nodeProps(n).length - 1) * 16 + 8])
+    .concat(edges.map(([t, a, b]) => { const e = rows[t] || { props: [] }; return [e.src, (nodes[a][1] + nodes[b][1]) / 2, CY + 22 + wrapParts(e.props, 30).length * 16 + 4]; }));
+  srcs.forEach(([src, x, top]) => {
+    if (!src) return;
+    const w = Math.max(130, src.length * 7.4 + 24);
+    out.push(`<path class="e dash gold" d="M${x},${TY} V${top}" marker-end="url(#nm-gold)"/>`, `<rect class="bx pg" x="${x - w / 2}" y="${TY}" width="${w}" height="34" rx="10"/>`, svgT(x, TY + 22, src, 't-f t-pg', 'middle'));
+  });
+  return `<svg viewBox="0 0 1040 ${TY + 36}" role="img" aria-label="Modelo do grafo: Requisition REQUESTS Product e Supplier SUPPLIES Product, com propriedades, unicidade e índices; cada elemento vem de uma tabela do PostgreSQL, e as tabelas de ligação viram arestas." style="min-width:860px">${svgMarkers('nm')}${out.join('')}</svg>`;
+}
+/* Que elemento cada arquivo de projeção grava (MERGE) ou apaga (DELETE), lido do próprio Cypher. */
+function neoProjectionSvg() {
+  const files = neoFiles().filter(f => f.path.startsWith('neo4j/projection/') && f.lang === 'cypher');
+  if (!files.length) return '';
+  const els = ['Requisition', 'Product', 'Supplier', 'REQUESTS', 'SUPPLIES'];
+  const { rows } = neoElements();
+  const acts = files.map(f => {
+    const c = f.content.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    const merge = new Set(), del = new Set();
+    c.split('\n').forEach(l => { if (/^\s*MERGE\b/.test(l)) for (const m of l.matchAll(/[([]\w*:(\w+)/g)) merge.add(m[1]); });
+    for (const m of c.matchAll(/\bDELETE\s+(\w+)/g)) { const b = c.match(new RegExp('[(\\[]' + m[1] + ':(\\w+)')); if (b) del.add(b[1]); }
+    return { f, merge, del };
+  });
+  const EW = 270, EH = 42, RX = 600, RW = 250, ROW = 54, TOP = 34;
+  const n = Math.max(acts.length, els.length);
+  const ey = i => TOP + (n - acts.length) * ROW / 2 + i * ROW, ly = i => TOP + (n - els.length) * ROW / 2 + i * ROW;
+  const out = [svgT(1, 16, 'EVENTO DO OUTBOX · ARQUIVO', 't-lbl'), svgT(RX, 16, 'ELEMENTO DO GRAFO · ORIGEM', 't-lbl')];
+  acts.forEach((a, i) => {
+    [...a.merge].concat([...a.del]).forEach((el, j) => {
+      const k = els.indexOf(el); if (k < 0) return;
+      const isDel = a.del.has(el) && !a.merge.has(el) || j >= a.merge.size;
+      const y1 = ey(i) + EH / 2, y2 = ly(k) + EH / 2;
+      out.push(`<path class="e ${isDel ? 'dash gold' : 'on'}" d="M${1 + EW},${y1} C${(EW + RX) / 2},${y1} ${(EW + RX) / 2},${y2} ${RX - 2},${y2}" marker-end="url(#np${isDel ? '-gold' : '-on'})"/>`);
+    });
+  });
+  acts.forEach((a, i) => {
+    const name = a.f.path.split('/').pop();
+    out.push(`<a href="#/files/${esc(a.f.path)}" aria-label="Abrir ${esc(a.f.path)}"><g><rect class="bx" x="1" y="${ey(i)}" width="${EW}" height="${EH}" rx="10"/>${svgT(14, ey(i) + 18, name.replace('.cypher', '').toUpperCase(), 't-k')}${svgT(14, ey(i) + 33, name, 't-n')}</g></a>`);
+  });
+  els.forEach((el, k) => {
+    const rel = el === el.toUpperCase();
+    out.push(`<rect class="${rel ? 'bx' : 'bx gnb'}" x="${RX}" y="${ly(k)}" width="${RW}" height="${EH}" rx="${rel ? 10 : 21}"/>${svgT(RX + 16, ly(k) + 18, rel ? `-[:${el}]->` : `(:${el})`, 't-k t-node')}${svgT(RX + 16, ly(k) + 33, (rows[el] || {}).src || '', 't-n')}`);
+  });
+  return `<svg viewBox="0 0 ${RX + RW + 2} ${TOP + n * ROW}" role="img" aria-label="Cada evento do outbox e o elemento do grafo que o arquivo de projeção grava com MERGE ou apaga com DELETE." style="min-width:760px">${svgMarkers('np')}${out.join('')}</svg>`;
+}
+function pageNeo4jModel() {
+  crumbs([['Neo4j', '#/neo4j'], ['Modelagem']]);
+  const spec = FILES.get(NEO_SPEC);
+  const dec = spec ? (mdSection(spec.content, '04').split('### Decisões de modelagem')[1] || '').match(/^- .+$/gm) || [] : [];
+  const proj = neoProjectionSvg();
+  return head({ kicker: icon('graph') + ' Neo4j 5 · projeção de leitura', title: 'Modelagem',
+    desc: 'Rótulos, relacionamentos e propriedades da seção 04 da especificação, com unicidade e índices lidos de <code class="ic">constraints/</code> e <code class="ic">indexes/</code>. O PostgreSQL continua a fonte da verdade: cada elemento do grafo vem de uma tabela e pode ser reconstruído.',
+    badges: '<span class="badge warn">proposta implementável</span><span class="badge outline">endpoint ainda não existe na API</span>',
+    actions: `<a class="btn" href="#/neo4j">${icon('graph')}Cobertura</a><a class="btn" href="#/docs/${NEO_SPEC}">${icon('doc')}Especificação</a>` }) +
+  `<section class="section nsq-first"><div class="nsq">${neoModelSvg()}</div>
+    <div class="nsq-legend"><span><span class="lg lg-node"></span>rótulo de nó</span><span><span class="lg lg-link solid"></span>relacionamento, com as propriedades da aresta embaixo</span><span><span class="lg lg-gold"></span>projetado a partir da tabela</span></div></section>
+  ${proj ? `<section class="section"><div class="section-head"><h2 class="section-title">Projeção a partir do PostgreSQL</h2><p>O que cada evento do outbox grava ou apaga, lido do próprio Cypher em <code class="ic">projection/</code>. Todos usam <code class="ic">MERGE</code> pelas chaves do PostgreSQL: reprocessar um evento não duplica nó nem aresta. Clique num evento para abrir o arquivo.</p></div><div class="nsq">${proj}</div>
+    <div class="nsq-legend"><span><span class="lg lg-link solid"></span><code class="ic">MERGE</code> grava ou atualiza</span><span><span class="lg lg-gold"></span><code class="ic">DELETE</code> remove</span></div></section>` : ''}
+  ${dec.length ? `<section class="section"><div class="section-head"><h2 class="section-title">Decisões de modelagem</h2></div><div class="grid g3">${dec.map(l => { const m = l.match(/^- \*\*(.+?):?\*\*:?\s*(.*)$/); return m ? `<div class="card card-pad"><h3 style="font-size:15px">${inline(m[1].replace(/:$/, ''), NEO_SPEC)}</h3><p class="small muted" style="margin-top:6px">${inline(m[2], NEO_SPEC)}</p></div>` : ''; }).join('')}</div></section>` : ''}
+  ${footer()}`;
+}
+
 function initNeo4j() {
   const fx = neo4jFixture(); const svg = $('.g-graph svg'); if (!fx || !svg) return;
   const select = id => {
@@ -2589,7 +2952,7 @@ function buildSearch() {
   }
   DOCS.forEach(d => add('Documentos', 'doc', docTitle(d), d.path, `#/docs/${d.path}`));
   (D.files || []).forEach(f => add('Arquivos', 'file', f.path, (LANG_META[f.lang] || LANG_META.text).label + ' · ' + lines(f.content) + ' linhas', `#/files/${f.path}`));
-  [['Visão geral', '#/'], ['Modelagem (diagrama ER)', '#/pg/model'], ['Dicionário de dados', '#/pg/catalog'], ['Histórico', '#/history']].forEach(([n, h]) => add('Páginas', 'arrow', n, '', h));
+  [['Visão geral', '#/'], ['Modelagem (diagrama ER)', '#/pg/model'], ['Modelagem do MongoDB', '#/mongo/model'], ['Modelagem do Redis', '#/redis/model'], ['Modelagem do Neo4j', '#/neo4j/model'], ['Dicionário de dados', '#/pg/catalog'], ['Histórico', '#/history']].forEach(([n, h]) => add('Páginas', 'arrow', n, '', h));
   return S;
 }
 const GROUP_ORDER = ['Páginas', 'Tabelas', 'Views', 'Functions', 'Procedures', 'Triggers', 'Colunas', 'Índices', 'Constraints', 'Migrations', 'MongoDB', 'Redis', 'Neo4j', 'Documentos', 'Arquivos', 'No código'];
@@ -2709,8 +3072,11 @@ function route() {
       default: html = notFound();
     }
   }
+  else if (a === 'mongo' && b === 'model') { html = pageMongoModel(); title = 'MongoDB · modelagem'; }
   else if (a === 'mongo') { html = pageMongo(b); title = b || 'MongoDB'; }
+  else if (a === 'redis' && b === 'model') { html = pageRedisModel(); title = 'Redis · modelagem'; }
   else if (a === 'redis') { html = pageRedis(); title = 'Redis'; }
+  else if (a === 'neo4j' && b === 'model') { html = pageNeo4jModel(); title = 'Neo4j · modelagem'; }
   else if (a === 'neo4j') { html = pageNeo4j(params); init = initNeo4j; title = 'Neo4j · cobertura de fornecedores'; }
   else if (a === 'docs') { html = pageDocs(tail, params); title = tail || 'Documentação'; }
   else if (a === 'files') { html = pageFiles(tail, params); init = () => initFiles(params); title = tail || 'Arquivos'; }

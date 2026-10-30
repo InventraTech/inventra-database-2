@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]
 HTML = ROOT / "database-workspace.html"
 INTROSPECT = Path(__file__).with_name("introspect.sql")
 
-TEXT_EXT = {".py", ".sql", ".sh", ".js", ".json", ".md", ".redis", ".conf", ".yml", ".yaml", ".txt", ".ipynb", ".example", ".cypher"}
+TEXT_EXT = {".py", ".sql", ".sh", ".js", ".json", ".md", ".redis", ".conf", ".yml", ".yaml", ".txt", ".ipynb", ".example", ".cypher", ".lua"}
 SCOPES = ("postgre/", "mongo/", "redis/", "neo4j/", "scripts/", ".github/", "README.md", ".env.example")
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".svg", ".webp"}
 
@@ -72,7 +72,7 @@ def collect_files():
             continue
         raw = p.read_text(encoding="utf-8").replace("\r\n", "\n")
         lang = {".sql": "sql", ".sh": "bash", ".js": "js", ".json": "json", ".md": "md", ".redis": "redis",
-                ".conf": "conf", ".yml": "yaml", ".yaml": "yaml", ".ipynb": "python", ".py": "python", ".cypher": "cypher"}.get(ext, "text")
+                ".conf": "conf", ".yml": "yaml", ".yaml": "yaml", ".ipynb": "python", ".py": "python", ".cypher": "cypher", ".lua": "lua"}.get(ext, "text")
         if ext == ".ipynb":
             raw = notebook_code(raw)
         files.append({"path": path, "lang": lang, "content": raw})
