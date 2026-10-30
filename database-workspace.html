@@ -2645,7 +2645,7 @@ function pageMongoModel() {
   crumbs([['MongoDB', '#/mongo'], ['Modelagem']]);
   return head({ kicker: icon('leaf') + ' MongoDB 8 · banco dbIAI', title: 'Modelagem',
     desc: 'As coleções do dbIAI lado a lado, desenhadas a partir dos contratos <code class="ic">$jsonSchema</code> e de <code class="ic">create_indexes.js</code>. Cada documento é lido e gravado inteiro, por isso as listas de tamanho variável ficam embutidas em vez de virar coleção. Clique numa coleção para ver cada campo.',
-    actions: `<a class="btn" href="#/docs/mongo/docs/MONGO_MODEL.md">${icon('doc')}MONGO_MODEL.md</a>` }) +
+    actions: `<button class="btn" type="button" id="nsq-png">${icon('download')}Exportar PNG</button><a class="btn" href="#/docs/mongo/docs/MONGO_MODEL.md">${icon('doc')}MONGO_MODEL.md</a>` }) +
   `<section class="section nsq-first"><div class="nsq">${mongoModelSvg()}</div>
     <div class="nsq-legend"><span><b class="lg-key pk">PK</b>chave primária (<code class="ic">_id</code>)</span><span><b class="lg-key nn">NN</b>campo obrigatório no <code class="ic">$jsonSchema</code></span><span><b class="lg-key ref">REF</b>referência lógica ao PostgreSQL, sem chave estrangeira</span><span><span class="lg lg-nest"></span>objeto ou array embutido</span><span><span class="lg lg-link"></span>mesmo <code class="ic">session_id</code></span><span><span class="lg lg-dash"></span>sem validador</span></div></section>
   <section class="section"><div class="grid g3">
@@ -2761,7 +2761,7 @@ function pageRedisModel() {
   const q = redisQueueSvg();
   return head({ kicker: icon('redis') + ' Redis 7 · Aiven for Valkey', title: 'Modelagem',
     desc: 'O keyspace desenhado a partir da tabela do <code class="ic">KEYSPACE.md</code>: uma coluna por família de chaves, com tipo e TTL, e as linhas que mostram qual chave guarda IDs de qual. Clique numa chave para ver a linha dela no keyspace.',
-    actions: `<a class="btn" href="#/redis">${icon('key')}Keyspace</a><a class="btn" href="#/docs/redis/docs/KEYSPACE.md">${icon('doc')}KEYSPACE.md</a>` }) +
+    actions: `<button class="btn" type="button" id="nsq-png">${icon('download')}Exportar PNG</button><a class="btn" href="#/redis">${icon('key')}Keyspace</a><a class="btn" href="#/docs/redis/docs/KEYSPACE.md">${icon('doc')}KEYSPACE.md</a>` }) +
   `<section class="section nsq-first"><div class="nsq">${redisModelSvg()}</div>
     <div class="nsq-legend"><span><span class="lg lg-link solid"></span>a chave de origem guarda IDs ou hashes da chave de destino</span><span><span class="lg lg-gold"></span>fluxo, não referência: o código verificado é apagado e emite o token; o snapshot montado é publicado com <code class="ic">RENAME</code></span><span><span class="mono lg-ref">{userId}</span> <span class="mono lg-ref">{kitchenId}</span> IDs do PostgreSQL, sem chave estrangeira</span></div></section>
   ${q ? `<section class="section"><div class="section-head"><h2 class="section-title">Fila de cadastro, passo a passo</h2><p>Cada <code class="ic">.lua</code> roda inteiro de uma vez no Redis. O token de <code class="ic">consumer-lock</code> é a cerca: quem perdeu a concessão não confirma nem recupera itens. Clique num passo para abrir o script.</p></div><div class="nsq">${q}</div>
@@ -2887,7 +2887,7 @@ function pageNeo4jModel() {
   return head({ kicker: icon('graph') + ' Neo4j 5 · projeção de leitura', title: 'Modelagem',
     desc: 'Rótulos, relacionamentos e propriedades que a projeção grava, com unicidade e índices lidos de <code class="ic">constraints/</code> e <code class="ic">indexes/</code>. O PostgreSQL continua a fonte da verdade: cada elemento do grafo vem de uma tabela e pode ser reconstruído.',
     badges: '<span class="badge warn">proposta implementável</span><span class="badge outline">endpoint ainda não existe na API</span>',
-    actions: `<a class="btn" href="#/neo4j">${icon('graph')}Cobertura</a><a class="btn" href="#/docs/${NEO_SPEC}">${icon('doc')}Especificação</a>` }) +
+    actions: `<button class="btn" type="button" id="nsq-png">${icon('download')}Exportar PNG</button><a class="btn" href="#/neo4j">${icon('graph')}Cobertura</a><a class="btn" href="#/docs/${NEO_SPEC}">${icon('doc')}Especificação</a>` }) +
   `<section class="section nsq-first"><div class="nsq">${neoModelSvg()}</div>
     <div class="nsq-legend"><span><span class="lg lg-node"></span>rótulo de nó</span><span><span class="lg lg-link solid"></span>relacionamento</span><span><b class="lg-key pk">UQ</b>constraint de unicidade</span><span><b class="lg-key ix">IX</b>índice</span><span><b class="lg-key pk">KEY</b>chave da aresta no <code class="ic">MERGE</code></span><span><span class="lg lg-gold"></span>projetado a partir da tabela</span></div></section>
   ${proj ? `<section class="section"><div class="section-head"><h2 class="section-title">Projeção a partir do PostgreSQL</h2><p>O que cada evento do outbox grava ou apaga, lido do próprio Cypher em <code class="ic">projection/</code>. Todos usam <code class="ic">MERGE</code> pelas chaves do PostgreSQL: reprocessar um evento não duplica nó nem aresta. Clique num evento para abrir o arquivo.</p></div><div class="nsq">${proj}</div>
@@ -2895,6 +2895,82 @@ function pageNeo4jModel() {
   ${dec.length ? `<section class="section"><div class="section-head"><h2 class="section-title">Decisões de modelagem</h2></div><div class="grid g3">${dec.map(l => { const m = l.match(/^- \*\*(.+?):?\*\*:?\s*(.*)$/); return m ? `<div class="card card-pad"><h3 style="font-size:15px">${inline(m[1].replace(/:$/, ''), NEO_SPEC)}</h3><p class="small muted" style="margin-top:6px">${inline(m[2], NEO_SPEC)}</p></div>` : ''; }).join('')}</div></section>` : ''}
   ${footer()}`;
 }
+
+/* ---------- Exportar PNG das páginas de modelagem ---------- */
+/* Mesmo padrão do ER do PostgreSQL: o PNG leva todos os diagramas da página, com título, legenda e as cores do tema atual. */
+const NSQ_EXPORT = {
+  mongo: () => ({ file: 'inventra-modelagem-mongodb.png', title: 'Inventra · MongoDB',
+    sub: `Banco dbIAI · ${((D.mongo || {}).collections || []).length} coleções com contrato · ${((D.mongo || {}).indexes || []).length} índices`, captions: [] }),
+  redis: () => ({ file: 'inventra-modelagem-redis.png', title: 'Inventra · Redis',
+    sub: `${((D.redis || {}).keys || []).length} padrões de chave · ${Object.keys(redisFamilies().groups).length} famílias`, captions: ['Keyspace', 'Fila de cadastro, passo a passo'] }),
+  neo4j: () => ({ file: 'inventra-modelagem-neo4j.png', title: 'Inventra · Neo4j',
+    sub: 'Cobertura de fornecedores · projeção de leitura (proposta)', captions: ['Modelo do grafo', 'Projeção a partir do PostgreSQL'] })
+};
+const NSQ_PNG_PROPS = ['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-opacity', 'opacity', 'font-family', 'font-size', 'font-weight', 'font-style', 'letter-spacing', 'text-anchor'];
+/* Clona o SVG escrevendo o estilo calculado de cada elemento inline: a imagem não depende do CSS da página. */
+function nsqInlineSvg(src) {
+  const clone = src.cloneNode(true);
+  const a = [src, ...src.querySelectorAll('*')], b = [clone, ...clone.querySelectorAll('*')];
+  a.forEach((el, i) => {
+    if (!(el instanceof SVGElement) || !b[i]) return;
+    const cs = getComputedStyle(el);
+    NSQ_PNG_PROPS.forEach(p => { const v = cs.getPropertyValue(p); if (v) b[i].style.setProperty(p, v); });
+  });
+  clone.querySelectorAll('title').forEach(t => t.remove());
+  clone.removeAttribute('style'); clone.removeAttribute('class'); clone.removeAttribute('role'); clone.removeAttribute('aria-label');
+  return clone;
+}
+/* Monta o SVG autônomo da página e o rasteriza; devolve o Blob do PNG (ou null). */
+function nsqBuildPng(kind) {
+  const cfg = NSQ_EXPORT[kind](); const boxes = $$('.nsq').filter(b => b.querySelector('svg'));
+  if (!boxes.length) return Promise.resolve(null);
+  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
+  const font = "'Outfit',system-ui,'Segoe UI',Roboto,sans-serif";
+  const pad = 48; let y = pad + 44, W = 0; const parts = [];
+  boxes.forEach((box, i) => {
+    const svg = box.querySelector('svg'), vb = svg.viewBox.baseVal, w = vb.width, h = vb.height; W = Math.max(W, w);
+    const cap = cfg.captions[i];
+    if (cap) { parts.push(`<text x="${pad}" y="${y + 6}" style="font:700 15px ${font};fill:${v('--ink')}">${esc(cap)}</text>`); y += 30; }
+    const inner = nsqInlineSvg(svg);
+    ['x', 'y', 'width', 'height'].forEach((k, j) => inner.setAttribute(k, [pad, y, w, h][j]));
+    parts.push(new XMLSerializer().serializeToString(inner)); y += h + 14;
+    const lg = box.nextElementSibling;
+    if (lg && lg.classList.contains('nsq-legend')) {
+      const items = [...lg.children].map(s => { const k = s.querySelector(':scope > .lg-key'), t = s.textContent.replace(/\s+/g, ' ').trim(); return k ? t.replace(k.textContent, k.textContent + ' ') : t; }).filter(Boolean);
+      wrapParts(items, Math.max(40, Math.floor(w / 6.4)), '   ·   ').forEach(l => { parts.push(`<text x="${pad}" y="${y + 4}" style="font:400 11.5px ${font};fill:${v('--faint')}">${esc(l)}</text>`); y += 16; });
+      y += 22;
+    } else y += 10;
+  });
+  const w = W + 2 * pad, h = y + pad - 14; const scale = Math.min(2, 8000 / Math.max(w, h));
+  const stamp = new Date().toLocaleDateString('pt-BR');
+  const out = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+<defs><pattern id="nq-grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" style="fill:${v('--er-grid')}"/></pattern></defs>
+<rect width="${w}" height="${h}" style="fill:${v('--er-bg')}"/><rect width="${w}" height="${h}" fill="url(#nq-grid)"/>
+<text x="${pad}" y="${pad - 6}" style="font:700 20px ${font};fill:${v('--ink')}">${esc(cfg.title)}</text>
+<text x="${pad}" y="${pad + 14}" style="font:400 12px ${font};fill:${v('--faint')}">${esc(cfg.sub)} · ${stamp}</text>
+${parts.join('\n')}</svg>`;
+  const url = URL.createObjectURL(new Blob([out], { type: 'image/svg+xml;charset=utf-8' }));
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+      const ctx = c.getContext('2d'); ctx.scale(scale, scale); ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url); c.toBlob(b => resolve(b), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+function nsqExportPng() {
+  const kind = (location.hash.match(/^#\/(mongo|redis|neo4j)\/model/) || [])[1]; if (!kind) return;
+  nsqBuildPng(kind).then(b => {
+    if (!b) { toast('Não foi possível gerar o PNG'); return; }
+    const u = URL.createObjectURL(b), a = document.createElement('a');
+    a.href = u; a.download = NSQ_EXPORT[kind]().file; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 1000); toast('PNG exportado');
+  });
+}
+function nsqInit() { const b = $('#nsq-png'); if (b) b.addEventListener('click', nsqExportPng); }
 
 function initNeo4j() {
   const fx = neo4jFixture(); const svg = $('.g-graph svg'); if (!fx || !svg) return;
@@ -3152,11 +3228,11 @@ function route() {
       default: html = notFound();
     }
   }
-  else if (a === 'mongo' && b === 'model') { html = pageMongoModel(); title = 'MongoDB · modelagem'; }
+  else if (a === 'mongo' && b === 'model') { html = pageMongoModel(); init = nsqInit; title = 'MongoDB · modelagem'; }
   else if (a === 'mongo') { html = pageMongo(b); title = b || 'MongoDB'; }
-  else if (a === 'redis' && b === 'model') { html = pageRedisModel(); title = 'Redis · modelagem'; }
+  else if (a === 'redis' && b === 'model') { html = pageRedisModel(); init = nsqInit; title = 'Redis · modelagem'; }
   else if (a === 'redis') { html = pageRedis(); title = 'Redis'; }
-  else if (a === 'neo4j' && b === 'model') { html = pageNeo4jModel(); title = 'Neo4j · modelagem'; }
+  else if (a === 'neo4j' && b === 'model') { html = pageNeo4jModel(); init = nsqInit; title = 'Neo4j · modelagem'; }
   else if (a === 'neo4j') { html = pageNeo4j(params); init = initNeo4j; title = 'Neo4j · cobertura de fornecedores'; }
   else if (a === 'docs') { html = pageDocs(tail, params); title = tail || 'Documentação'; }
   else if (a === 'files') { html = pageFiles(tail, params); init = () => initFiles(params); title = tail || 'Arquivos'; }
