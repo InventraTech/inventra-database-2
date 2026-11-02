@@ -5,7 +5,7 @@ Este diretório reúne somente os artefatos de banco necessários às entregas I
 ## Entregas
 
 - **INV2-24 — integração:** configuração persistente do Redis, convenções de chaves e comandos de validação.
-- **INV2-25 — fila de produtos:** contrato FIFO, scripts Lua atômicos, recuperação, quarentena e dead-letter queue.
+- **INV2-25 — fila de produtos:** contrato FIFO, scripts Lua atômicos, recuperação, quarentena e dead-letter queue. O fluxo continua no projeto, mas está sem endpoint HTTP ativo desde 26/10/2026.
 - **INV2-26 — ranking:** contrato do Sorted Set, atualização atômica e expiração do ranking.
 
 ## Estrutura

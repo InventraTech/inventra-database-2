@@ -10,7 +10,7 @@ MERGE (r:Requisition {id: $requisition.id})
 SET r.kitchenId = $requisition.kitchenId,
     r.type = $requisition.type,
     r.status = $requisition.status,
-    r.updatedAt = datetime()
+    r.projectedAt = datetime()
 
 // Item que saiu da requisição no PostgreSQL também sai do grafo (reconciliação de ITEM_DELETED perdido)
 WITH r
@@ -26,4 +26,4 @@ MERGE (r)-[rel:REQUESTS {itemId: item.itemId}]->(p)
 SET rel.quantity = item.quantity,
     rel.estimatedPrice = item.estimatedPrice,
     rel.note = item.note,
-    rel.updatedAt = datetime();
+    rel.projectedAt = datetime();

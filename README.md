@@ -163,8 +163,8 @@ flowchart LR
 | `V022__remove_indices_duplicados.sql` | Remove 6 índices que repetem outro: `idx_user_email` e `idx_product_barcode` duplicam o `UNIQUE` de `email` e `barcode`; os outros quatro são prefixo exato da PK ou de um índice composto |
 | `V023__supplier_photo.sql` | Foto do fornecedor (`tb_supplier.photo_url`, URL do Cloudinary) |
 
-> [!WARNING]
-> A API tem uma `V010__product_registration_event.sql` própria, que adiciona `tb_product.registration_event_id` para a fila Redis. Essa coluna ainda não está neste repositório, e o número `V010` aqui é o catálogo de dados. As migrations `V001`–`V009` são idênticas nos dois repositórios.
+> [!NOTE]
+> As migrations `V001`–`V023` são idênticas neste repositório e na API.
 
 ### Modelo de dados
 
@@ -263,7 +263,7 @@ As entregas **INV2-24, INV2-25 e INV2-26** estão versionadas em [`redis/`](redi
 | Refresh tokens (rotação e revogação por família) | `rt:{hash}`, `rt:fam:{familyId}` | 30 dias |
 | Redefinição de senha (código por e-mail e link para o web) | `inventra:password-reset:*` (`requests:{hashDoEmail}`, `code:{userId}`, `token:{hashDoToken}`) | 15 minutos; contador de pedidos 1 hora |
 | Pedidos de acesso à cozinha | `kar:{id}`, `kar:user:{userId}`, `kar:user:{userId}:kitchens`, `kar:kitchen:{kitchenId}` | 7 dias enquanto pendente; decidido fica como histórico |
-| Fila de cadastro por código de barras (FIFO, DLQ) | `inventra:product-registration:*` (`ready`, `job:{eventId}`, `pending`, `sequence`, `consumer-lock`, `errors`) | Pendentes sem TTL; resultado e DLQ 7 dias |
+| Fila de cadastro por código de barras (FIFO, DLQ), sem endpoint HTTP ativo | `inventra:product-registration:*` (`ready`, `job:{eventId}`, `pending`, `sequence`, `consumer-lock`, `errors`) | Pendentes sem TTL; resultado e DLQ 7 dias |
 | Ranking de lotes por validade | `inventra:ranking:expiration:{kitchenId}` | 60 segundos, renovados a cada reconstrução |
 
 | | |
@@ -453,7 +453,6 @@ database-workspace.html  # documentação navegável de todos os bancos
 - [x] Monitoramento de uso (DAU) registrado pelo banco
 - [x] Contrato do MongoDB da IA (`$jsonSchema`, índices, seed e CI)
 - [x] Catálogo de chaves e comandos por operação do Redis
-- [ ] `tb_product.registration_event_id` da fila Redis no `postgre/` (hoje só na `V010` da API)
 - [x] Modelo de grafo no Neo4j (cobertura de fornecedores: Cypher, massa de teste, reprojeção e CI)
 - [ ] Endpoint de cobertura de fornecedores e worker de projeção na API
 - [ ] Ambiente de homologação
