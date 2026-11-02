@@ -2544,7 +2544,7 @@ function nqRow(x, top, w, o) {
   let s = '';
   if (o.key) s += svgT(x + 12, top + 16, o.key, 'er-key' + ({ REF: ' fk', IX: ' ix' }[o.key] || ''), '', o.keyTip);
   if (o.nn) s += svgT(x + 38, top + 16, 'NN', 'er-nn');
-  s += svgT(x + 56, top + 16, o.name, 't-f', '', o.tip);
+  s += svgT(x + (o.nameX || 56), top + 16, o.name, 't-f', '', o.tip);
   if (o.type != null) s += `<text class="t-ty" x="${x + w - 12}" y="${top + 16}" text-anchor="end">${esc(o.type)}${o.ref ? `<tspan class="t-ref"> → ${esc(o.ref)}</tspan>` : ''}${o.tip ? `<title>${esc(o.tip)}</title>` : ''}</text>`;
   return s;
 }
@@ -2668,7 +2668,8 @@ function redisFamilies() {
 /* Relações entre chaves, tiradas do KEYSPACE.md e dos arquivos de redis/commands (o contrato não as traz em formato de máquina).
    ref   = a chave de origem guarda IDs ou hashes da chave de destino (kar:user:* e kar:kitchen:* guardam o id de kar:{id};
            ready, ready:{token} e pending guardam eventIds de job:{eventId}; rt:fam guarda hashes de rt:{hash}).
-   emite = fluxo, não referência: verificar o código apaga a chave do código e grava o token (password-reset.redis).
+   emite = fluxo, não referência: verificar o código apaga a chave do código e grava um token novo (password-reset.redis);
+           o pedido inicial grava o token do link. redisResetSvg desenha os dois caminhos.
    swap  = o snapshot montado é publicado sobre a chave oficial com RENAME (replace.lua). */
 const REDIS_REFS = [
   ['rt:fam:{familyId}', 'rt:{hashDoToken}', 'hashes', 'ref'],
@@ -2731,7 +2732,7 @@ function redisQueueSvg() {
     ['consumer-lock', 'consumer', C + 'lease.redis', ['SET consumer-lock <token> NX EX 30', 'lease.lua renova a cada 5 s, só o dono', 'libera ao desligar o consumer']],
     ['recover.lua', 'consumer', P + 'recover.lua', ['só se o token ainda é o dono', 'ZRANGE pending: todos os pendentes', 'DEL ready e ready:{token}', 'LPUSH de cada eventId em ready:{token}']],
     ['BRPOP', 'consumer', C + 'consume.redis', ['BRPOP ready:{token} 2 · GET job:{eventId}', 'o eventId sai da lista, fica em pending', 'update.lua: job = PROCESSING']],
-    ['PostgreSQL', 'API', null, ['grava tb_product e registration_event_id', 'na mesma transação; a coluna é única', 'existe só na V010 da API, ainda não', 'em postgre/']],
+    ['PostgreSQL', 'API', null, ['grava tb_product na transação normal', 'o enqueue recusa código de barras já usado', 'retomada após commit: o código já existe', 'e o consumer reutiliza o productId']],
     ['update.lua', 'consumer', P + 'update.lua', ['COMPLETED | FAILED: job fica 7 dias', 'ZREM pending (sai da fila)', 'FAILED: LPUSH errors (DLQ), máx. 1.000,', 'expira 7 dias após a última falha']]
   ];
   const W = 310, G = 44, BH = 118, Y1 = 4, Y2 = Y1 + BH + 62; const out = [];
@@ -2754,18 +2755,54 @@ function redisQueueSvg() {
   const c = pos(5), n = { x: c.x, y: q.y, h: q.h };
   out.push(`<rect class="bx dash" x="${n.x}" y="${n.y}" width="${W}" height="${n.h}" rx="10"/>${svgT(n.x + 14, n.y + 22, 'Falha transitória de banco', 't-b')}${svgT(n.x + 14, n.y + 42, 'a API tenta até 5 vezes, com backoff', 't-n')}${svgT(n.x + 14, n.y + 58, '(job.attempts, job.nextAttemptAt) e só então', 't-n')}${svgT(n.x + 14, n.y + 74, 'grava FAILED; até lá o pedido segue em pending', 't-n')}`);
   const VW = 3 * W + 2 * G + 2;
-  return `<svg viewBox="0 0 ${VW} ${q.y + q.h + 8}" role="img" aria-label="Fila de cadastro: enqueue, concessão do consumer, recuperação, BRPOP, gravação no PostgreSQL e update, com quarentena de payload inválido e nova tentativa em falha transitória." style="min-width:${Math.min(VW, 960)}px">${svgMarkers('rq')}${out.join('')}</svg>`;
+  return `<svg viewBox="0 0 ${VW} ${q.y + q.h + 8}" role="img" aria-label="Fluxo interno da fila de cadastro, sem endpoint HTTP ativo: enqueue, concessão do consumer, recuperação, BRPOP, gravação no PostgreSQL e update, com quarentena de payload inválido e nova tentativa em falha transitória." style="min-width:${Math.min(VW, 960)}px">${svgMarkers('rq')}${out.join('')}</svg>`;
+}
+/* Caixa dos fluxos abaixo: clicar abre o arquivo que documenta o passo. */
+function redisFlowBox(x, y, w, h, name, who, href, lines) {
+  const g = `<g><rect class="er-shadow" x="${x}" y="${y + 3}" width="${w}" height="${h}" rx="10"/><rect class="bx" x="${x}" y="${y}" width="${w}" height="${h}" rx="10"/>`
+    + svgT(x + 14, y + 24, name, 't-b') + svgT(x + w - 14, y + 24, who, 't-e', 'end') + lines.map((l, j) => svgT(x + 14, y + 48 + j * 16, l, 't-n')).join('') + '</g>';
+  return FILES.has(href) ? `<a href="#/files/${esc(href)}" aria-label="Abrir ${esc(href)}">${g}</a>` : g;
+}
+/* Redefinição de senha: o pedido grava contador, código e token do link; verificar o código grava outro token. */
+function redisResetSvg() {
+  const F = 'redis/commands/auth/password-reset.redis';
+  if (!(D.redis && D.redis.keys || []).some(k => /password-reset:token:/.test(k.pattern))) return '';
+  const W = 310, G = 44, BH = 118, Y2 = BH + 66, X = i => 1 + i * (W + G); const out = [];
+  out.push(redisFlowBox(X(0), 4, W, BH, '1  Pedido (forgot)', 'API', F, ['INCR requests:{hashDoEmail}, janela de 1 h', 'acima de 5 por hora, ou e-mail sem usuário', 'ativo: para aqui e responde igual', 'um e-mail só leva o código e o link']));
+  out.push(redisFlowBox(X(1), 4, W, BH, '2  code:{userId}', 'Redis', F, ['código de 6 dígitos, só o hash no Redis', 'HSET codeHash, attempts 0 · TTL 15 min', 'pedido novo substitui o código anterior']));
+  out.push(redisFlowBox(X(2), 4, W, BH, '3  Verificação (verify)', 'API', F, ['até 5 tentativas; na última errada, apaga', 'código certo: DEL code:{userId}', 'grava um token novo e o devolve na resposta']));
+  out.push(redisFlowBox(X(2), Y2, W, BH, '4  token:{hashDoToken}', 'Redis', F, ['HSET userId, pwd · TTL 15 min, só o hash', 'reset: lê e apaga, cada token vale uma vez', 'pwd diferente da senha atual: a API recusa', 'depois da troca: DEL code:{userId}']));
+  [0, 1].forEach(i => out.push(`<path class="e" d="M${X(i) + W},${4 + BH / 2} H${X(i + 1) - 1}" marker-end="url(#rr)"/>`));
+  out.push(`<path class="e" d="M${X(2) + W / 2},${4 + BH} V${Y2 - 1}" marker-end="url(#rr)"/>`, svgT(X(2) + W / 2 + 8, (4 + BH + Y2) / 2 + 4, 'token da verificação', 't-e'));
+  out.push(`<path class="e" d="M${X(0) + W / 2},${4 + BH} V${Y2 + BH / 2} H${X(2) - 1}" marker-end="url(#rr)"/>`, svgT(X(0) + W / 2 + 8, Y2 + BH / 2 - 6, 'token do link enviado por e-mail', 't-e'));
+  const VW = 3 * W + 2 * G + 2;
+  return `<svg viewBox="0 0 ${VW} ${Y2 + BH + 8}" role="img" aria-label="Redefinição de senha: o pedido grava o contador, o código e o token do link; a verificação do código grava um novo token, e os dois caminhos chegam à chave do token." style="min-width:${Math.min(VW, 960)}px">${svgMarkers('rr')}${out.join('')}</svg>`;
+}
+/* Ranking de validade: conteúdo do snapshot e publicação atômica (replace.lua e RedisExpirationRanking na API). */
+function redisRankingSvg() {
+  if (!(D.redis && D.redis.keys || []).some(k => /ranking:expiration:/.test(k.pattern))) return '';
+  const W = 310, G = 64, BH = 136, X = i => 1 + i * (W + G); const L = 'redis/scripts/ranking/replace.lua', K = 'redis/docs/RANKING.md'; const out = [];
+  out.push(redisFlowBox(X(0), 4, W, BH, ':build:{uuid}', 'replace.lua', L, ['ZADD +inf ~empty: marcador interno, sempre', 'EXPIRE com o TTL (60 s) antes do RENAME', 'ZADD de cada lote ACTIVE, com saldo e validade', 'membro: ID do lote, padding de 10 posições', 'score: expirationDate.toEpochDay()']));
+  out.push(redisFlowBox(X(1), 4, W, BH, ':{kitchenId}', 'Redis', K, ['snapshot publicado, um ZSET por cozinha', 'o TTL da chave temporária vem com o RENAME', 'quem lê vê o snapshot inteiro ou o anterior']));
+  out.push(redisFlowBox(X(2), 4, W, BH, 'Leitura', 'API', K, ['score crescente: quem vence antes vem antes', 'empate: ID numérico crescente, pelo padding', '~empty fica por último e a API o ignora', 'cache ausente: reconstrói do PostgreSQL']));
+  out.push(`<path class="e gold dash" d="M${X(0) + W},${4 + BH / 2} H${X(1) - 1}" marker-end="url(#rj-gold)"/>`, svgT(X(0) + W + G / 2, 4 + BH / 2 - 7, 'RENAME', 't-e', 'middle'));
+  out.push(`<path class="e" d="M${X(1) + W},${4 + BH / 2} H${X(2) - 1}" marker-end="url(#rj)"/>`);
+  const VW = 3 * W + 2 * G + 2;
+  return `<svg viewBox="0 0 ${VW} ${BH + 12}" role="img" aria-label="Ranking de validade: o snapshot temporário recebe marcador, TTL e membros, é publicado com RENAME e lido em ordem crescente de score." style="min-width:${Math.min(VW, 960)}px">${svgMarkers('rj')}${out.join('')}</svg>`;
 }
 function pageRedisModel() {
   crumbs([['Redis', '#/redis'], ['Modelagem']]);
-  const q = redisQueueSvg();
+  const q = redisQueueSvg(), reset = redisResetSvg(), rank = redisRankingSvg();
   return head({ kicker: icon('redis') + ' Redis 7 · Aiven for Valkey', title: 'Modelagem',
     desc: 'O keyspace desenhado a partir da tabela do <code class="ic">KEYSPACE.md</code>: uma coluna por família de chaves, com tipo e TTL, e as linhas que mostram qual chave guarda IDs de qual. Clique numa chave para ver a linha dela no keyspace.',
     actions: `<button class="btn" type="button" id="nsq-png">${icon('download')}Exportar PNG</button><a class="btn" href="#/redis">${icon('key')}Keyspace</a><a class="btn" href="#/docs/redis/docs/KEYSPACE.md">${icon('doc')}KEYSPACE.md</a>` }) +
   `<section class="section nsq-first"><div class="nsq">${redisModelSvg()}</div>
-    <div class="nsq-legend"><span><span class="lg lg-link solid"></span>a chave de origem guarda IDs ou hashes da chave de destino</span><span><span class="lg lg-gold"></span>fluxo, não referência: o código verificado é apagado e emite o token; o snapshot montado é publicado com <code class="ic">RENAME</code></span><span><span class="mono lg-ref">{userId}</span> <span class="mono lg-ref">{kitchenId}</span> IDs do PostgreSQL, sem chave estrangeira</span></div></section>
-  ${q ? `<section class="section"><div class="section-head"><h2 class="section-title">Fila de cadastro, passo a passo</h2><p>Cada <code class="ic">.lua</code> roda inteiro de uma vez no Redis. O token de <code class="ic">consumer-lock</code> é a cerca: quem perdeu a concessão não confirma nem recupera itens. Clique num passo para abrir o script.</p></div><div class="nsq">${q}</div>
+    <div class="nsq-legend"><span><span class="lg lg-link solid"></span>a chave de origem guarda IDs ou hashes da chave de destino</span><span><span class="lg lg-gold"></span>fluxo, não referência: o código verificado é apagado e emite um token novo; o snapshot montado é publicado com <code class="ic">RENAME</code></span><span><span class="mono lg-ref">{userId}</span> <span class="mono lg-ref">{kitchenId}</span> IDs do PostgreSQL, sem chave estrangeira</span></div></section>
+  ${reset ? `<section class="section"><div class="section-head"><h2 class="section-title">Redefinição de senha, passo a passo</h2><p>O pedido grava o contador, o código e o token do link. A verificação do código grava outro token, e os dois caminhos chegam à mesma chave. Clique num passo para abrir os comandos.</p></div><div class="nsq">${reset}</div></section>` : ''}
+  ${q ? `<section class="section"><div class="section-head"><h2 class="section-title">Fluxo interno preservado da fila de cadastro — sem endpoint HTTP ativo</h2><p>Os endpoints assíncronos saíram da API em 26/10/2026 (INV2-206): classes, consumer, chaves e scripts continuam, mas a API HTTP não inicia mais este fluxo. Cada <code class="ic">.lua</code> roda inteiro de uma vez no Redis. O token de <code class="ic">consumer-lock</code> é a cerca: quem perdeu a concessão não confirma nem recupera itens. Clique num passo para abrir o script.</p></div><div class="nsq">${q}</div>
     <div class="nsq-legend"><span><span class="lg lg-link solid"></span>fluxo normal</span><span><span class="lg lg-gold"></span>desvio para a DLQ</span><span><span class="lg lg-dash"></span>regra da API, sem script no repositório</span></div></section>` : ''}
+  ${rank ? `<section class="section"><div class="section-head"><h2 class="section-title">Ranking de validade: conteúdo e publicação</h2><p>Um Sorted Set por cozinha, montado numa chave temporária e publicado de uma vez. Clique numa caixa para abrir o script ou o contrato.</p></div><div class="nsq">${rank}</div>
+    <div class="nsq-legend"><span><span class="lg lg-gold"></span>publicação atômica com <code class="ic">RENAME</code></span><span><span class="lg lg-link solid"></span>consulta da API</span></div></section>` : ''}
   <section class="section"><div class="grid g3">
     <div class="card card-pad"><h3 style="font-size:15px">noeviction</h3><p class="small muted" style="margin-top:6px">Pedidos pendentes e histórico de acesso decidido não têm TTL. Com memória cheia o Redis recusa a escrita (a API responde 503), em vez de apagar dado em silêncio.</p></div>
     <div class="card card-pad"><h3 style="font-size:15px">Sem chave estrangeira</h3><p class="small muted" style="margin-top:6px">Usuário ou cozinha removido no PostgreSQL deixa chaves órfãs até o TTL ou a limpeza na leitura. As sem TTL (pedidos de acesso decididos) exigem apagar <code class="ic">kar:user:{userId}*</code> na exclusão do usuário.</p></div>
@@ -2807,15 +2844,15 @@ function neoModelSvg() {
   };
   const card = (cx, cw, n, rel) => {
     const p = props(n); const x = cx - cw / 2; const notes = [];
-    if (p.pair) notes.push('uma aresta por par fornecedor → produto');
+    if (p.pair) notes.push('MERGE da aresta com os dois nós já vinculados: uma aresta por par. Preço e prazo ficam no SET, fora do MERGE');
     if (p.specOnly.length) notes.push(`${p.specOnly.join(', ')}: na especificação, mas nenhum Cypher grava`);
     const nl = notes.flatMap(t => wrapParts(t.split(' '), Math.floor((cw - 24) / 5.8), ' '));
     const h = 10 + p.shown.length * NQ_ROW + (nl.length ? nl.length * 13 + 10 : 0) + 4;
     let s = nqCard(x, CARD_Y, cw, h, '', null, { head: false });
     p.shown.forEach((name, i) => {
-      const key = p.key === name ? (rel ? 'KEY' : 'UQ') : (idx[n] || []).includes(name) ? 'IX' : '';
-      const tip = key === 'UQ' ? 'Constraint de unicidade' : key === 'IX' ? 'Índice' : key === 'KEY' ? 'Chave da aresta no MERGE' : '';
-      s += nqRow(x, CARD_Y + 5 + i * NQ_ROW, cw, { name, key, keyTip: tip });
+      const key = p.key === name ? (rel ? 'MERGE KEY' : 'UQ') : (idx[n] || []).includes(name) ? 'IX' : '';
+      const tip = key === 'UQ' ? 'Constraint de unicidade' : key === 'IX' ? 'Índice' : key === 'MERGE KEY' ? 'Chave da aresta no MERGE; não é constraint do banco' : '';
+      s += nqRow(x, CARD_Y + 5 + i * NQ_ROW, cw, { name, key, keyTip: tip, nameX: rel ? 76 : 0 });
     });
     nl.forEach((l, i) => { s += svgT(x + 14, CARD_Y + 5 + p.shown.length * NQ_ROW + 16 + i * 13, l, 't-n it'); });
     out.push(s); bottom = Math.max(bottom, CARD_Y + h);
@@ -2889,7 +2926,7 @@ function pageNeo4jModel() {
     badges: '<span class="badge warn">proposta implementável</span><span class="badge outline">endpoint ainda não existe na API</span>',
     actions: `<button class="btn" type="button" id="nsq-png">${icon('download')}Exportar PNG</button><a class="btn" href="#/neo4j">${icon('graph')}Cobertura</a><a class="btn" href="#/docs/${NEO_SPEC}">${icon('doc')}Especificação</a>` }) +
   `<section class="section nsq-first"><div class="nsq">${neoModelSvg()}</div>
-    <div class="nsq-legend"><span><span class="lg lg-node"></span>rótulo de nó</span><span><span class="lg lg-link solid"></span>relacionamento</span><span><b class="lg-key pk">UQ</b>constraint de unicidade</span><span><b class="lg-key ix">IX</b>índice</span><span><b class="lg-key pk">KEY</b>chave da aresta no <code class="ic">MERGE</code></span><span><span class="lg lg-gold"></span>projetado a partir da tabela</span></div></section>
+    <div class="nsq-legend"><span><span class="lg lg-node"></span>rótulo de nó</span><span><span class="lg lg-link solid"></span>relacionamento</span><span><b class="lg-key pk">UQ</b>constraint de unicidade</span><span><b class="lg-key ix">IX</b>índice</span><span><b class="lg-key pk">MERGE KEY</b>chave da aresta no <code class="ic">MERGE</code>, sem constraint no banco</span><span><code class="ic">projectedAt</code> hora da gravação no grafo, não vem do PostgreSQL</span><span><span class="lg lg-gold"></span>projetado a partir da tabela</span></div></section>
   ${proj ? `<section class="section"><div class="section-head"><h2 class="section-title">Projeção a partir do PostgreSQL</h2><p>O que cada evento do outbox grava ou apaga, lido do próprio Cypher em <code class="ic">projection/</code>. Todos usam <code class="ic">MERGE</code> pelas chaves do PostgreSQL: reprocessar um evento não duplica nó nem aresta. Clique num evento para abrir o arquivo.</p></div><div class="nsq">${proj}</div>
     <div class="nsq-legend"><span><span class="lg lg-link solid"></span><code class="ic">MERGE</code> grava ou atualiza</span><span><span class="lg lg-gold"></span><code class="ic">DELETE</code> remove</span></div></section>` : ''}
   ${dec.length ? `<section class="section"><div class="section-head"><h2 class="section-title">Decisões de modelagem</h2></div><div class="grid g3">${dec.map(l => { const m = l.match(/^- \*\*(.+?):?\*\*:?\s*(.*)$/); return m ? `<div class="card card-pad"><h3 style="font-size:15px">${inline(m[1].replace(/:$/, ''), NEO_SPEC)}</h3><p class="small muted" style="margin-top:6px">${inline(m[2], NEO_SPEC)}</p></div>` : ''; }).join('')}</div></section>` : ''}
@@ -2902,7 +2939,7 @@ const NSQ_EXPORT = {
   mongo: () => ({ file: 'inventra-modelagem-mongodb.png', title: 'Inventra · MongoDB',
     sub: `Banco dbIAI · ${((D.mongo || {}).collections || []).length} coleções com contrato · ${((D.mongo || {}).indexes || []).length} índices`, captions: [] }),
   redis: () => ({ file: 'inventra-modelagem-redis.png', title: 'Inventra · Redis',
-    sub: `${((D.redis || {}).keys || []).length} padrões de chave · ${Object.keys(redisFamilies().groups).length} famílias`, captions: ['Keyspace', 'Fila de cadastro, passo a passo'] }),
+    sub: `${((D.redis || {}).keys || []).length} padrões de chave · ${Object.keys(redisFamilies().groups).length} famílias`, captions: ['Keyspace', 'Redefinição de senha, passo a passo', 'Fluxo interno preservado da fila de cadastro — sem endpoint HTTP ativo', 'Ranking de validade: conteúdo e publicação'] }),
   neo4j: () => ({ file: 'inventra-modelagem-neo4j.png', title: 'Inventra · Neo4j',
     sub: 'Cobertura de fornecedores · projeção de leitura (proposta)', captions: ['Modelo do grafo', 'Projeção a partir do PostgreSQL'] })
 };

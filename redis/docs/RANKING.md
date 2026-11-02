@@ -4,10 +4,11 @@ O ranking em tempo real prioriza lotes pela proximidade da data de validade. O R
 
 ## Modelo
 
-- **Membro:** identificador do lote, serializado de forma estável.
-- **Pontuação:** instante de validade normalizado pela API.
+- **Membro:** ID do lote com padding de 10 posições (`%010d`).
+- **Pontuação:** `expirationDate.toEpochDay()`.
 - **Ordem:** menor pontuação primeiro, isto é, lotes que vencem antes aparecem primeiro.
-- **Desempate:** ordem lexicográfica do membro, comportamento nativo do Redis para pontuações iguais.
+- **Desempate:** ordem lexicográfica do membro, comportamento nativo do Redis para pontuações iguais; com o padding, equivale ao ID numérico crescente.
+- **Marcador:** `~empty` com pontuação `+inf`, gravado em toda publicação. Separa cozinha sem lotes elegíveis de cache ausente e é ignorado na leitura.
 
 As chaves oficiais e seus placeholders estão em [KEYSPACE.md](KEYSPACE.md).
 

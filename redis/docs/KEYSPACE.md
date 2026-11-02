@@ -89,26 +89,29 @@ Um usuário pede para entrar numa cozinha; o supervisor aprova ou recusa. O pedi
 
 Fila FIFO confiável da INV2-25 (Redis List com `LPUSH`/`BRPOP`). O fluxo completo e as garantias estão em [`PRODUCT_QUEUE.md`](PRODUCT_QUEUE.md). O prefixo vem de `REDIS_PRODUCT_QUEUE_KEY_PREFIX`: ambientes que compartilham o mesmo Redis precisam de prefixos diferentes, e os testes usam `inventra:test:...`.
 
+> [!NOTE]
+> **Sem endpoint HTTP ativo.** Os endpoints assíncronos de cadastro por código de barras saíram da API em 26/10/2026 (INV2-206). As classes, o consumer, as chaves e os scripts continuam no projeto, mas a API HTTP atual não inicia mais este fluxo.
+
 | Sufixo | Conteúdo |
 |--------|----------|
 | `ready` | IDs aguardando quando não há consumer com concessão |
 | `ready:{token}` | Lista própria da concessão atual; um consumer antigo nunca retira itens da sucessora |
-| `job:{eventId}` | JSON do `ProductRegistrationJob`: `eventId`, `userId`, `request` (`name`, `brand`, `categoryId`, `unitId`, `barcode`), `status` (`QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`), `productId`, `errorCode`, `submittedAt`, `startedAt`, `finishedAt`, `attempts`, `nextAttemptAt` |
+| `job:{eventId}` | JSON do `ProductRegistrationJob`: `eventId`, `userId`, `request` (`name`, `brand`, `categoryId`, `unitId`, `barcode`, `supplierId`, `supplierCode`, `referencePrice`, `leadTimeDays`), `status` (`QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`), `productId`, `errorCode`, `submittedAt`, `startedAt`, `finishedAt`, `attempts`, `nextAttemptAt` |
 | `pending` | Índice durável dos pedidos não confirmados (score = `sequence`); a concessão reconstrói sua lista a partir dele |
 | `sequence` | Contador monotônico do índice |
 | `consumer-lock` | Token da concessão exclusiva de consumo |
 | `errors` | DLQ: JSON do job falho ou `{eventId, status, errorCode, originalPayload}` (até 4 KiB) da quarentena; máx. 1.000 itens |
 
-O vínculo com o PostgreSQL é a coluna `tb_product.registration_event_id` (UUID único), gravada na mesma transação do produto: é ela que permite reprocessar o mesmo `eventId` sem duplicar o produto. Essa coluna está hoje só na migration da API (`V010__product_registration_event.sql`), ainda não no `postgre/` deste repositório.
+A idempotência com o PostgreSQL é o código de barras (`tb_product.barcode`, único). O enqueue recusa código já cadastrado e, numa retomada após commit, o consumer encontra o produto pelo código e reutiliza o `productId` (`ProductRegistrationProcessor`). O produto é gravado na transação normal de cadastro; `tb_product` não tem coluna para o `eventId`.
 
 ## Ranking de validade (`inventra:ranking:expiration:*`)
 
-Ranking da INV2-26 com um Sorted Set por cozinha. Entram lotes `ACTIVE`, com saldo positivo e data de validade preenchida. O membro é o ID do lote com padding de 10 posições, e o score é a data de validade em epoch day; por isso os lotes que vencem primeiro aparecem nas primeiras posições. Empates são resolvidos pelo ID numérico crescente.
+Ranking da INV2-26 com um Sorted Set por cozinha. Entram lotes `ACTIVE`, com saldo positivo e data de validade preenchida. O membro é o ID do lote com padding de 10 posições, e o score é `expirationDate.toEpochDay()`; por isso os lotes que vencem primeiro aparecem nas primeiras posições. Empates são resolvidos pelo ID numérico crescente.
 
 | Chave | Conteúdo |
 |-------|----------|
-| `inventra:ranking:expiration:{kitchenId}` | Snapshot publicado do ranking da cozinha; contém também o marcador interno `~empty` com score `+inf` quando a cozinha não possui lotes elegíveis |
-| `inventra:ranking:expiration:{kitchenId}:build:{uuid}` | Snapshot temporário criado pelo script Lua; recebe os membros e é publicado com `RENAME`, sem expor ranking parcial |
+| `inventra:ranking:expiration:{kitchenId}` | Snapshot publicado do ranking da cozinha; contém sempre o marcador interno `~empty` com score `+inf`, que separa cozinha sem lotes elegíveis de cache ausente e é ignorado na leitura |
+| `inventra:ranking:expiration:{kitchenId}:build:{uuid}` | Snapshot temporário criado pelo script Lua; recebe o marcador, o TTL e os membros e é publicado com `RENAME`, que leva o TTL junto, sem expor ranking parcial |
 
 - TTL padrão: 60 segundos, configurável por `REDIS_RANKING_TTL_SECONDS`; o prefixo é configurável por `REDIS_RANKING_KEY_PREFIX`.
 - Entrada, baixa, reposição, ajuste e consumo FEFO publicam a alteração após o commit PostgreSQL. A reconstrução assíncrona substitui o snapshot inteiro de forma atômica.

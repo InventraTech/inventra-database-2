@@ -10,4 +10,4 @@ MERGE (s)-[rel:SUPPLIES]->(p)
 SET rel.supplierCode = $supplierCode,
     rel.referencePrice = $referencePrice,
     rel.leadTimeDays = $leadTimeDays,
-    rel.updatedAt = datetime();
+    rel.projectedAt = datetime();

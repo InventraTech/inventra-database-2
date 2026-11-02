@@ -22,7 +22,7 @@ ranking() {
 uncovered() { q -P '{requisitionId: 842, kitchenId: 12}' -f queries/uncovered_products.cypher | tail -n +2 | cut -d, -f2 | sed 's/^ *"//; s/"$//' | paste -sd, -; }
 counts() { q "MATCH (n) WHERE n:Requisition OR n:Product OR n:Supplier WITH count(n) AS nodes
               OPTIONAL MATCH ()-[r:REQUESTS|SUPPLIES]->() RETURN nodes, count(r);" | tail -1; }
-# Propriedades de negócio de todas as arestas (updatedAt fica de fora: muda a cada evento por desenho)
+# Propriedades de negócio de todas as arestas (projectedAt fica de fora: muda a cada evento por desenho)
 edges() { q "MATCH (a)-[r:REQUESTS|SUPPLIES]->(b)
              RETURN type(r), a.id, b.id, r.itemId, r.quantity, r.estimatedPrice, r.note, r.supplierCode, r.referencePrice, r.leadTimeDays
              ORDER BY type(r), a.id, b.id;"; }

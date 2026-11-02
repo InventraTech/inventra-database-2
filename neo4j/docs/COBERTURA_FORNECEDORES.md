@@ -114,11 +114,13 @@ O percurso possui dois níveis de relacionamento e cruza uma aresta de demanda c
 
 | Elemento | Chave | Propriedades projetadas | Origem relacional |
 |---|---|---|---|
-| `:Requisition` | `id` | `kitchenId`, `type`, `status`, `createdAt`, `updatedAt` | `tb_requisition` |
+| `:Requisition` | `id` | `kitchenId`, `type`, `status`, `projectedAt` | `tb_requisition` |
 | `:Product` | `id` | `name`, `active` | `tb_product` |
 | `:Supplier` | `id` | `legalName`, `rating`, `active` | `tb_supplier` |
-| `:REQUESTS` | `itemId` | `quantity`, `estimatedPrice`, `note`, `updatedAt` | `tb_requisition_item` |
-| `:SUPPLIES` | `productId` + `supplierId` | `supplierCode`, `referencePrice`, `leadTimeDays`, `updatedAt` | `tb_product_supplier` |
+| `:REQUESTS` | `itemId` | `quantity`, `estimatedPrice`, `note`, `projectedAt` | `tb_requisition_item` |
+| `:SUPPLIES` | `productId` + `supplierId` | `supplierCode`, `referencePrice`, `leadTimeDays`, `projectedAt` | `tb_product_supplier` |
+
+`projectedAt` é a hora em que a projeção gravou o elemento no grafo (`datetime()`); não vem de nenhuma coluna do PostgreSQL.
 
 Mapeamento coluna a coluna feito pela reprojeção ([`seeds/seed.ipynb`](../seeds/seed.ipynb)):
 
@@ -172,7 +174,7 @@ MERGE (r:Requisition {id: $requisition.id})
 SET r.kitchenId = $requisition.kitchenId,
     r.type = $requisition.type,
     r.status = $requisition.status,
-    r.updatedAt = datetime();
+    r.projectedAt = datetime();
 
 UNWIND $items AS item
 MERGE (p:Product {id: item.productId})
@@ -181,7 +183,7 @@ MERGE (r)-[rel:REQUESTS {itemId: item.itemId}]->(p)
 SET rel.quantity = item.quantity,
     rel.estimatedPrice = item.estimatedPrice,
     rel.note = item.note,
-    rel.updatedAt = datetime();
+    rel.projectedAt = datetime();
 ```
 
 ### Upsert do catálogo de fornecimento
@@ -196,7 +198,7 @@ MERGE (s)-[rel:SUPPLIES]->(p)
 SET rel.supplierCode = $supplierCode,
     rel.referencePrice = $referencePrice,
     rel.leadTimeDays = $leadTimeDays,
-    rel.updatedAt = datetime();
+    rel.projectedAt = datetime();
 ```
 
 > [!NOTE]
@@ -233,7 +235,7 @@ A integração recomendada é assíncrona. A transação de negócio confirma pr
 |---|---|---|
 | Outbox no PostgreSQL | Registrar evento na mesma transação da alteração. | Tipos: `REQUISITION_UPSERTED`, `ITEM_UPSERTED`/`DELETED`, `PRODUCT_SUPPLIER_UPSERTED`/`DELETED`, `SUPPLIER_UPDATED`. |
 | Projection worker | Ler eventos, montar parâmetros e executar `MERGE`/`DELETE` no Neo4j. | Idempotente por `aggregateId` + `eventId`; retry com backoff; dead letter após limite. |
-| Reconciliação | Comparar contagens e `updatedAt`; recompor entidades divergentes. | Job noturno e endpoint administrativo protegido para uma requisição. A reconstrução completa e a comparação de contagens estão em [`seeds/seed.ipynb`](../seeds/seed.ipynb). |
+| Reconciliação | Comparar contagens e propriedades de negócio; recompor entidades divergentes. | Job noturno e endpoint administrativo protegido para uma requisição. A reconstrução completa e a comparação de contagens estão em [`seeds/seed.ipynb`](../seeds/seed.ipynb). |
 | Watermark | Expor idade da projeção na resposta. | `projectionUpdatedAt` e `stale=true` quando exceder, por exemplo, 5 minutos. |
 | Redis existente | Pode acordar/serializar o worker, se o padrão do projeto for reaproveitado. | Não armazena o grafo e não se torna fonte de verdade. |
 
@@ -241,7 +243,7 @@ A integração recomendada é assíncrona. A transação de negócio confirma pr
 
 - O endpoint consulta o PostgreSQL primeiro para validar existência, cozinha e autorização; depois usa `id` + `kitchenId` no Cypher.
 - Se a projeção estiver atrasada, a resposta inclui `stale` e timestamp — não retorna um ranking silenciosamente desatualizado.
-- Eventos duplicados são seguros porque os comandos usam `MERGE` e `SET`; eventos fora de ordem usam `version`/`updatedAt` para impedir regressão.
+- Eventos duplicados são seguros porque os comandos usam `MERGE` e `SET`; os comandos não comparam versão, então o worker precisa entregar os eventos em ordem por `aggregateId`. `projectedAt` guarda só a hora da gravação e não impede regressão.
 - Uma reconstrução completa apaga apenas o banco/projeção Neo4j controlado e reprojeta tabelas relacionais; nunca apaga o PostgreSQL.
 
 ---
@@ -745,6 +747,7 @@ Ao versionar a especificação e executar o Cypher num Neo4j 5.26 real, estes po
 | Reconstrução completa | Descrita | [`seeds/seed.ipynb`](../seeds/seed.ipynb): reprojeta do PostgreSQL e compara contagens. |
 | Repositório Java (seção 10) | Construtor com argumentos fora da ordem do record, sem `totalProducts`; `projectionClock`, `mapSupplier` e a interface não declarados | Assinaturas alinhadas, `priceMissingCount` no DTO e records `CoveredProduct`/`UncoveredProduct` declarados. Continua sendo código ilustrativo: **não foi compilado**. |
 | IDs e nomes dos fornecedores | Só o id do Alfa (31) é fixado; a tabela da seção 11 diz “Alfa”, o JSON da seção 08 e o teste da seção 12 dizem “Distribuidora Alfa” | Beta = 32 e Gama = 33; o seed usa “Distribuidora Alfa”, “Beta” e “Gama”, que é o que o teste da seção 12 espera. |
+| Datas do grafo | `createdAt` e `updatedAt` nas propriedades projetadas; `version`/`updatedAt` contra eventos fora de ordem | `createdAt` saiu: nenhum Cypher nem consulta o usa. `updatedAt` virou `projectedAt`, porque é a hora da projeção e `tb_product_supplier` tem um `updated_at` de outro significado. Os comandos não comparam versão: a ordem por `aggregateId` fica a cargo do worker. |
 | Figuras | Os dois diagramas (seções 04 e 06) são ilustrações no PDF | Redesenhados em Mermaid. |
 
 ### Trechos literais do PDF que foram corrigidos
